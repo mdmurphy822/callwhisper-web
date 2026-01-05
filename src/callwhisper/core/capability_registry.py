@@ -10,7 +10,7 @@ Based on LibV2 orchestrator-architecture patterns:
 
 import threading
 from dataclasses import dataclass, field
-from typing import Callable, Optional, Dict, List, Any, TypeVar, Generic
+from typing import Callable, Optional, Dict, List, Any, TypeVar
 from enum import Enum
 
 from .logging_config import get_core_logger

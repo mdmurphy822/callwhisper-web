@@ -9,18 +9,16 @@ Based on LibV2 orchestrator-architecture course:
 Supports Windows (DirectShow) and Linux (PulseAudio/ALSA).
 """
 
-import os
 import time
 import shutil
 import psutil
-import asyncio
 import subprocess
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
 
 from .logging_config import get_logger
-from ..utils.platform import get_audio_backend, get_platform
+from ..utils.platform import get_audio_backend
 
 logger = get_logger(__name__)
 

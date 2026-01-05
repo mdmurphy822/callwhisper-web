@@ -12,22 +12,19 @@ import time
 import threading
 from enum import IntEnum
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Set
+from typing import Callable, Dict, List, Optional
 
 if sys.platform != "win32":
     raise ImportError("WindowsAudioSessionMonitor is only available on Windows")
 
 import comtypes
-from comtypes import GUID, COMMETHOD, HRESULT
-from ctypes import POINTER, c_int, c_uint, c_wchar_p, c_float
-from ctypes.wintypes import DWORD, LPCWSTR
 
 # Initialize COM for the current thread
 comtypes.CoInitialize()
 
-from pycaw.pycaw import AudioUtilities, IAudioSessionControl2, ISimpleAudioVolume
+from pycaw.pycaw import AudioUtilities  # noqa: E402
 
-from ..core.logging_config import get_logger
+from ..core.logging_config import get_logger  # noqa: E402
 
 logger = get_logger(__name__)
 

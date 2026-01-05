@@ -11,7 +11,6 @@ Based on LibV2 patterns:
 
 import subprocess
 import asyncio
-import json
 import re
 from pathlib import Path
 from typing import Optional, Callable, Awaitable, List
@@ -219,7 +218,6 @@ async def transcribe_audio(
         # Stream stderr for progress updates while respecting timeout
         stderr_lines = []
         stdout_data = b""
-        start_time = asyncio.get_event_loop().time()
         last_progress = -1
 
         async def read_stderr_with_progress():

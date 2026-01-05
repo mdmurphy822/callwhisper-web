@@ -20,14 +20,12 @@ from collections import deque
 
 from ..core.logging_config import get_service_logger
 from ..core.exceptions import (
-    CircuitOpenError,
     AllHandlersFailedError,
     ProcessTimeoutError,
 )
 from ..core.tracing import (
     RequestContext,
     get_request_context,
-    set_request_context,
     get_request_id,
 )
 

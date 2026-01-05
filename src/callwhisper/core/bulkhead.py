@@ -12,9 +12,9 @@ failure in one area doesn't bring down the entire system.
 
 import asyncio
 import threading
-from concurrent.futures import ThreadPoolExecutor, Future
+from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, TypeVar, Any, Optional, Dict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 import time
 

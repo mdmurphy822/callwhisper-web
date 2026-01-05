@@ -160,7 +160,7 @@ def get_device_status(device_name: str, config: DeviceGuardConfig) -> Dict[str, 
         if re.search(pattern, name_lower, re.IGNORECASE):
             return {
                 "safe": False,
-                "reason": f"Matches dangerous pattern: microphone/input device",
+                "reason": "Matches dangerous pattern: microphone/input device",
                 "match_type": "dangerous_pattern",
             }
 

@@ -10,9 +10,9 @@ Based on LibV2 Python course patterns:
 import hashlib
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any
 
 from .logging_config import get_core_logger
 

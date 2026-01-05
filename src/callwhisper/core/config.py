@@ -3,11 +3,9 @@
 import sys
 import json
 from functools import lru_cache
-from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 from pydantic import BaseModel
-from pydantic_settings import BaseSettings
 
 from ..utils.paths import get_data_dir
 

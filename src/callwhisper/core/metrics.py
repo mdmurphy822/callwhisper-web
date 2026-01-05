@@ -14,7 +14,6 @@ import threading
 from pathlib import Path
 from dataclasses import dataclass, field, asdict
 from typing import Dict, List, Optional, Any
-from collections import deque
 from datetime import datetime, timedelta
 
 from .logging_config import get_logger

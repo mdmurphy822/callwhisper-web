@@ -10,6 +10,7 @@ For enterprise Windows deployments, the portable and installed modes
 store all data next to the executable for easy backup and GPO management.
 """
 
+import re
 import sys
 import json
 from pathlib import Path
@@ -264,7 +265,6 @@ def ensure_data_dirs() -> None:
 
 
 # Path Sanitization Utilities
-import re
 
 # Safe characters for path components: alphanumeric, dash, underscore, dot
 _SAFE_PATH_COMPONENT_PATTERN = re.compile(r"^[a-zA-Z0-9_\-\.]+$")
@@ -292,13 +292,13 @@ def sanitize_path_component(value: str, max_length: int = 128) -> str:
 
     # Check for path traversal patterns
     if ".." in value:
-        raise ValueError(f"Path traversal detected: contains '..'")
+        raise ValueError("Path traversal detected: contains '..'")
 
     if "/" in value:
-        raise ValueError(f"Path traversal detected: contains '/'")
+        raise ValueError("Path traversal detected: contains '/'")
 
     if "\\" in value:
-        raise ValueError(f"Path traversal detected: contains '\\'")
+        raise ValueError("Path traversal detected: contains '\\'")
 
     # Check for null bytes
     if "\x00" in value:

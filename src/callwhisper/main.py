@@ -10,7 +10,6 @@ Based on LibV2 patterns:
 """
 
 import sys
-from pathlib import Path
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -20,7 +19,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import __version__, __app_name__
 from .core.config import get_settings
-from .core.state import app_state
 from .core.logging_config import get_logger, configure_logging
 from .core.tracing import TracingMiddleware
 from .core.persistence import CheckpointManager
@@ -96,7 +94,7 @@ async def lifespan(app: FastAPI):
         ttl_seconds=settings.performance.cache_ttl_seconds,
         enabled=settings.performance.cache_enabled,
     )
-    cache = get_cache(cache_config)
+    get_cache(cache_config)  # Initialize cache (retrieved via get_cache() elsewhere)
     logger.info(
         "transcription_cache_ready",
         max_entries=cache_config.max_entries,

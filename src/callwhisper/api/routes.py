@@ -27,19 +27,18 @@ from ..core.logging_config import get_api_logger
 from ..core.metrics import metrics
 from ..core.tracing import get_request_id
 from ..services.device_enum import list_audio_devices
-from ..services.device_guard import is_device_safe, get_device_status
+from ..services.device_guard import get_device_status
 from ..services.audio_detector import get_setup_status, mark_setup_complete
-from ..services.recorder import start_recording, stop_recording
+from ..services.recorder import start_recording
 from ..services.process_orchestrator import process_orchestrator
 from ..core.bulkhead import get_executor
 from ..core.cache import get_cache
 from ..core.capability_registry import get_registry
 from ..core.network_guard import is_guard_enabled, get_guard_status
-from ..core.health import get_health_checker, HealthStatus as HealthCheckStatus
 from ..core.job_store import get_job_store, JobCheckpoint
 from ..core.metrics import get_transcription_store
 from ..services.job_queue import get_job_queue, QueuedJob
-from ..services.folder_scanner import scan_folder, scan_folder_paths, get_folder_stats
+from ..services.folder_scanner import scan_folder_paths, get_folder_stats
 from ..utils.paths import (
     get_output_dir,
     get_ffmpeg_path,
@@ -1524,31 +1523,6 @@ async def reset_state():
     """Reset application to idle state."""
     await app_state.reset()
     return {"status": "ok"}
-
-
-@router.post("/recordings/{recording_id}/open-folder")
-async def open_recording_folder(recording_id: str):
-    """Open the output folder for a recording in the system file manager."""
-    recording = recording_manager.get_recording(recording_id)
-    if not recording:
-        raise HTTPException(status_code=404, detail="Recording not found")
-
-    folder_path = Path(recording.output_folder)
-    if not folder_path.exists():
-        raise HTTPException(status_code=404, detail="Folder not found")
-
-    # Platform-specific folder opening
-    import sys
-
-    if sys.platform == "linux":
-        subprocess.Popen(["xdg-open", str(folder_path)])
-    elif sys.platform == "darwin":
-        subprocess.Popen(["open", str(folder_path)])
-    elif sys.platform == "win32":
-        subprocess.Popen(["explorer", str(folder_path)])
-
-    logger.info("open_folder", recording_id=recording_id, folder=str(folder_path))
-    return {"status": "ok", "folder": str(folder_path)}
 
 
 # File Upload Constants

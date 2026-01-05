@@ -16,9 +16,8 @@ Key concepts:
 import os
 import threading
 import time
-import weakref
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, BinaryIO, Dict, Generator, Optional, TextIO, Union
 

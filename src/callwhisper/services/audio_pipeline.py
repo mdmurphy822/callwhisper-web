@@ -15,7 +15,7 @@ Key benefits:
 import asyncio
 import subprocess
 import tempfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import AsyncGenerator, Generator, Optional, Dict, Any, List
 

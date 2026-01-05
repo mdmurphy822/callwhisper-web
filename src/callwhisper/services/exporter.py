@@ -10,7 +10,7 @@ Exports transcripts in multiple formats:
 """
 
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any, List
 from datetime import datetime
 import json
 import csv

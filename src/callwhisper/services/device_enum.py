@@ -289,7 +289,6 @@ async def list_audio_devices_async(use_cache: bool = True) -> List[str]:
     Returns:
         List of audio device names available for recording.
     """
-    import asyncio
 
     global _device_cache
 

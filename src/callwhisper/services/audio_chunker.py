@@ -11,7 +11,7 @@ import json
 import subprocess
 import os
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List
 from dataclasses import dataclass, asdict
 
 from ..core.logging_config import get_service_logger

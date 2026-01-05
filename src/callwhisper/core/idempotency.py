@@ -15,7 +15,7 @@ Key use cases:
 import hashlib
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Tuple, TypeVar
 

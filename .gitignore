@@ -1,0 +1,144 @@
+# CallWhisper .gitignore
+
+# =============================================================================
+# Python
+# =============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# =============================================================================
+# IDE and Editors
+# =============================================================================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# =============================================================================
+# OS Generated
+# =============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# =============================================================================
+# Large Binary Files (Download separately)
+# =============================================================================
+# Whisper models (1.5GB+)
+models/*.bin
+models/*.ggml
+
+# Vendor binaries (57MB+)
+vendor/ffmpeg*
+vendor/ffprobe*
+vendor/whisper-cli*
+vendor/*.exe
+vendor/*.dll
+
+# Nested git repos (whisper.cpp source)
+vendor/whisper-cpp/
+
+# =============================================================================
+# Runtime Data
+# =============================================================================
+# Output recordings and transcripts
+output/
+recordings/
+
+# Checkpoint files for crash recovery
+checkpoints/
+
+# Log files
+*.log
+logs/
+
+# =============================================================================
+# Testing and Coverage
+# =============================================================================
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# =============================================================================
+# Build Artifacts
+# =============================================================================
+*.exe
+*.msi
+*.zip
+CallWhisper_*.zip
+CallWhisper.exe
+
+# PyInstaller
+*.manifest
+*.spec
+
+# =============================================================================
+# Secrets and Configuration
+# =============================================================================
+# Never commit secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+secrets.json
+
+# Local config overrides (config.json is tracked)
+config/config.local.json
+
+# =============================================================================
+# Test Audio Files (large - download separately)
+# =============================================================================
+test_audio/*.wav
+test_audio/*.mp3
+test_audio/*.flac
+test_audio/test_output/
+
+# =============================================================================
+# Temporary Files
+# =============================================================================
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak

@@ -1,0 +1,49 @@
+{
+  "$schema": "checksums-schema.json",
+  "description": "SHA-256 checksums for vendor binaries. Verify before deployment.",
+  "generated_at": "2026-01-05T00:00:00Z",
+  "verification_command": "sha256sum -c checksums.txt",
+  "binaries": {
+    "linux": {
+      "whisper-cli": {
+        "path": "vendor/whisper-cli",
+        "sha256": "d7a2b0bcd28f996cbabfef717ebf144e512a6bf7afdef672e84e0f4ddc059950",
+        "source": "Built from whisper.cpp (https://github.com/ggerganov/whisper.cpp)",
+        "version": "1.7.2"
+      },
+      "ffmpeg": {
+        "note": "Uses system ffmpeg - verify with: sha256sum $(which ffmpeg)",
+        "required_version": ">=4.0",
+        "installation": "apt install ffmpeg"
+      }
+    },
+    "windows": {
+      "whisper-cli.exe": {
+        "path": "vendor/whisper-cli.exe",
+        "sha256": "TO_BE_GENERATED_ON_WINDOWS_BUILD",
+        "source": "Built from whisper.cpp (https://github.com/ggerganov/whisper.cpp)",
+        "version": "1.7.2"
+      },
+      "ffmpeg.exe": {
+        "path": "vendor/ffmpeg.exe",
+        "sha256": "TO_BE_GENERATED_ON_WINDOWS_BUILD",
+        "source": "https://www.gyan.dev/ffmpeg/builds/",
+        "version": ">=6.0"
+      }
+    }
+  },
+  "models": {
+    "ggml-medium.en.bin": {
+      "path": "models/ggml-medium.en.bin",
+      "sha256": "TO_BE_ADDED_FROM_HUGGINGFACE",
+      "source": "https://huggingface.co/ggerganov/whisper.cpp",
+      "size_mb": 1533
+    }
+  },
+  "verification_instructions": [
+    "1. Download binaries from official sources only",
+    "2. Calculate SHA-256: sha256sum <binary>",
+    "3. Compare with values in this file",
+    "4. Report mismatches to security team immediately"
+  ]
+}

@@ -1,0 +1,28 @@
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+aiofiles>=23.2.1
+python-multipart>=0.0.6
+structlog>=24.1.0
+
+# Export format dependencies
+reportlab>=4.0.0
+python-docx>=0.8.11
+
+# Testing dependencies
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+pytest-cov>=4.1.0
+httpx>=0.27.0
+
+# Security scanning (dev/CI only)
+safety>=3.0.0
+pip-audit>=2.7.0
+bandit[toml]>=1.7.0
+
+# Windows call detection (Windows only)
+pycaw>=20230407; sys_platform == "win32"        # Python Core Audio Windows library
+comtypes>=1.2.0; sys_platform == "win32"        # COM interface support
+wmi>=1.5.1; sys_platform == "win32"             # Windows Management Instrumentation
+pywin32>=306; sys_platform == "win32"           # Windows API access

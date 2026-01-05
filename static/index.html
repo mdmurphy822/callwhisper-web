@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CallWhisper - Voice Transcriber</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <!-- Skip link for keyboard users (LibV2 accessibility pattern) -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <!-- Accessible notification container (replaces alert()) -->
+    <div id="notification-container"
+         class="notification-container"
+         aria-label="Notifications">
+    </div>
+
+    <!-- Screen reader status announcements (LibV2 ARIA live region pattern) -->
+    <div id="status-announcer"
+         role="status"
+         aria-live="polite"
+         aria-atomic="true"
+         class="visually-hidden">
+    </div>
+
+    <div class="container">
+        <header role="banner">
+            <h1>CallWhisper</h1>
+            <div class="header-controls">
+                <button id="theme-toggle"
+                        class="theme-toggle"
+                        type="button"
+                        aria-label="Toggle light/dark mode"
+                        title="Toggle theme">
+                    <span class="theme-icon theme-icon-sun" aria-hidden="true">&#9728;</span>
+                    <span class="theme-icon theme-icon-moon" aria-hidden="true">&#9790;</span>
+                </button>
+                <span class="version" id="version" aria-label="Version 1.0.0">v1.0.0</span>
+            </div>
+        </header>
+
+        <main id="main-content" role="main">
+            <!-- Status Section -->
+            <section class="status-section" aria-labelledby="status-heading">
+                <h2 id="status-heading" class="visually-hidden">Recording Status</h2>
+                <div class="status-indicator" id="status-indicator" role="status">
+                    <span class="status-dot" aria-hidden="true"></span>
+                    <span class="status-text" id="status-text">Idle</span>
+                </div>
+                <div class="timer" id="timer" aria-label="Recording duration" aria-live="off">00:00</div>
+            </section>
+
+            <!-- Device Selection -->
+            <section class="device-section" aria-labelledby="device-heading">
+                <h2 id="device-heading" class="visually-hidden">Device Selection</h2>
+                <label for="device-select" id="device-label">
+                    Recording Device (Call Output)
+                    <span class="required-indicator" aria-hidden="true">*</span>
+                    <span class="visually-hidden">(required)</span>
+                </label>
+                <div class="device-row">
+                    <select id="device-select"
+                            disabled
+                            aria-required="true"
+                            aria-describedby="device-hint device-error">
+                        <option value="">Loading devices...</option>
+                    </select>
+                    <button id="refresh-devices"
+                            type="button"
+                            aria-label="Refresh device list">
+                        <span aria-hidden="true">&#x21bb;</span>
+                    </button>
+                </div>
+                <div id="device-hint" class="hint-text">
+                    Select a virtual audio cable (e.g., VB-Cable) to capture call audio
+                </div>
+                <div id="device-error" class="error-text" role="alert" aria-live="assertive"></div>
+            </section>
+
+            <!-- Ticket ID -->
+            <section class="ticket-section" aria-labelledby="ticket-heading">
+                <h2 id="ticket-heading" class="visually-hidden">Ticket Information</h2>
+                <label for="ticket-id">Ticket/Case ID (optional)</label>
+                <input type="text"
+                       id="ticket-id"
+                       placeholder="e.g., TICKET-12345"
+                       aria-describedby="ticket-hint ticket-error"
+                       pattern="[A-Za-z0-9\-_]+"
+                       maxlength="50">
+                <div id="ticket-hint" class="hint-text">
+                    Letters, numbers, hyphens, and underscores only
+                </div>
+                <div id="ticket-error" class="error-text" role="alert" aria-live="assertive"></div>
+            </section>
+
+            <!-- File Upload Drop Zone -->
+            <section class="upload-section" aria-labelledby="upload-heading">
+                <h2 id="upload-heading" class="visually-hidden">Upload Audio File</h2>
+                <div id="drop-zone" class="drop-zone" role="button" tabindex="0"
+                     aria-describedby="drop-hint">
+                    <span class="drop-icon" aria-hidden="true">&#128193;</span>
+                    <span class="drop-text">Drop audio files here or click to browse</span>
+                    <input type="file" id="file-input" accept="audio/*" class="visually-hidden" multiple>
+                </div>
+                <div id="drop-hint" class="hint-text">
+                    Supports WAV, MP3, OGG, M4A, FLAC (max 500MB). Multiple files will be queued.
+                </div>
+            </section>
+
+            <!-- Progress Bar -->
+            <section class="progress-section"
+                     id="progress-section"
+                     style="display: none;"
+                     aria-labelledby="progress-heading">
+                <h2 id="progress-heading" class="visually-hidden">Processing Progress</h2>
+                <div class="progress-bar"
+                     role="progressbar"
+                     aria-valuenow="0"
+                     aria-valuemin="0"
+                     aria-valuemax="100"
+                     aria-label="Processing progress">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <span class="progress-text" id="progress-text" aria-live="polite">Processing...</span>
+
+                <!-- Partial Transcript Preview (Real-time) -->
+                <div class="partial-transcript-section" id="partial-transcript-section" style="display: none;">
+                    <div class="partial-transcript-header">
+                        <span class="transcribing-indicator">
+                            <span class="transcribing-dot" aria-hidden="true"></span>
+                            <span>Transcribing...</span>
+                        </span>
+                    </div>
+                    <div class="partial-transcript-text" id="partial-transcript-text" aria-live="polite">
+                        <span class="blinking-cursor" aria-hidden="true"></span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Batch Queue Panel -->
+            <section class="queue-section" id="queue-section" style="display: none;"
+                     aria-labelledby="queue-heading">
+                <h2 id="queue-heading">
+                    <span class="queue-icon" aria-hidden="true">&#128203;</span>
+                    Job Queue
+                    <span class="queue-count" id="queue-count">0</span>
+                </h2>
+                <div class="queue-stats" id="queue-stats">
+                    <span class="stat stat-queued">Queued: <strong id="stat-queued">0</strong></span>
+                    <span class="stat stat-processing">Processing: <strong id="stat-processing">0</strong></span>
+                    <span class="stat stat-completed">Done: <strong id="stat-completed">0</strong></span>
+                    <span class="stat stat-failed">Failed: <strong id="stat-failed">0</strong></span>
+                </div>
+                <div class="queue-list" id="queue-list" role="list" aria-label="List of queued jobs">
+                    <!-- Queue items rendered by JS -->
+                </div>
+                <div class="queue-actions">
+                    <button id="queue-clear-history" class="btn btn-small btn-secondary" type="button"
+                            aria-label="Clear completed and failed jobs from history">
+                        Clear History
+                    </button>
+                </div>
+            </section>
+
+            <!-- Control Buttons -->
+            <section class="controls-section" aria-labelledby="controls-heading">
+                <h2 id="controls-heading" class="visually-hidden">Recording Controls</h2>
+                <button id="btn-start"
+                        class="btn btn-primary"
+                        type="button"
+                        disabled
+                        aria-describedby="btn-start-hint">
+                    <span class="btn-icon" aria-hidden="true">&#9679;</span>
+                    <span class="btn-text">Start Recording</span>
+                </button>
+                <button id="btn-stop"
+                        class="btn btn-danger"
+                        type="button"
+                        disabled
+                        aria-describedby="btn-stop-hint">
+                    <span class="btn-icon" aria-hidden="true">&#9632;</span>
+                    <span class="btn-text">Stop + Transcribe</span>
+                </button>
+                <span id="btn-start-hint" class="visually-hidden">Begin recording from selected device</span>
+                <span id="btn-stop-hint" class="visually-hidden">Stop recording and start transcription</span>
+            </section>
+
+            <!-- Completed Recordings -->
+            <section class="recordings-section" aria-labelledby="recordings-heading">
+                <h2 id="recordings-heading">Completed Recordings</h2>
+                <div class="search-box">
+                    <input type="search"
+                           id="recordings-search"
+                           placeholder="Search recordings..."
+                           aria-label="Search recordings by ID, ticket, or transcript content"
+                           aria-describedby="search-hint">
+                    <button type="button"
+                            id="filter-toggle"
+                            class="filter-toggle"
+                            aria-expanded="false"
+                            aria-controls="filter-panel">
+                        <span aria-hidden="true">&#9881;</span>
+                        <span class="filter-toggle-text">Filters</span>
+                    </button>
+                    <span id="search-hint" class="visually-hidden">
+                        Type to filter recordings by ID, ticket ID, or transcript content
+                    </span>
+                </div>
+
+                <!-- Filter Panel (hidden by default) -->
+                <div id="filter-panel" class="filter-panel" style="display: none;">
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="filter-date-from">From Date</label>
+                            <input type="date" id="filter-date-from" aria-label="Filter from date">
+                        </div>
+                        <div class="filter-group">
+                            <label for="filter-date-to">To Date</label>
+                            <input type="date" id="filter-date-to" aria-label="Filter to date">
+                        </div>
+                        <div class="filter-group">
+                            <label for="filter-ticket">Ticket Prefix</label>
+                            <input type="text"
+                                   id="filter-ticket"
+                                   placeholder="e.g., TICKET"
+                                   aria-label="Filter by ticket prefix">
+                        </div>
+                        <div class="filter-group">
+                            <label for="filter-sort">Sort By</label>
+                            <select id="filter-sort" aria-label="Sort recordings">
+                                <option value="newest">Newest First</option>
+                                <option value="oldest">Oldest First</option>
+                                <option value="duration">Duration</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="filter-actions">
+                        <button type="button" id="filter-apply" class="btn btn-small btn-primary">Apply</button>
+                        <button type="button" id="filter-clear" class="btn btn-small btn-secondary">Clear</button>
+                    </div>
+                </div>
+
+                <div id="recordings-list"
+                     class="recordings-list"
+                     role="list"
+                     aria-label="List of completed recordings">
+                    <p class="empty-message" role="listitem">No recordings yet</p>
+                </div>
+
+                <!-- Pagination Controls -->
+                <div id="pagination-controls" class="pagination-controls" style="display: none;">
+                    <button type="button" id="pagination-prev" class="btn btn-small btn-secondary" disabled>
+                        <span aria-hidden="true">&larr;</span> Previous
+                    </button>
+                    <span id="pagination-info" class="pagination-info">Page 1 of 1</span>
+                    <button type="button" id="pagination-next" class="btn btn-small btn-secondary" disabled>
+                        Next <span aria-hidden="true">&rarr;</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Transcript Viewer Panel -->
+            <aside id="transcript-panel" class="transcript-panel" style="display: none;"
+                   role="region" aria-labelledby="transcript-heading">
+                <div class="transcript-header">
+                    <h3 id="transcript-heading">Transcript</h3>
+                    <div class="transcript-header-actions">
+                        <button id="transcript-edit-btn"
+                                class="btn-icon"
+                                type="button"
+                                aria-label="Edit transcript"
+                                title="Edit transcript">
+                            <span aria-hidden="true">&#9998;</span>
+                        </button>
+                        <button class="transcript-close" id="transcript-close" aria-label="Close transcript">&times;</button>
+                    </div>
+                </div>
+                <div class="transcript-info" id="transcript-info"></div>
+
+                <!-- Read-only view -->
+                <div class="transcript-content" id="transcript-content" aria-live="polite"></div>
+
+                <!-- Edit view (hidden by default) -->
+                <div class="transcript-editor" id="transcript-editor" style="display: none;">
+                    <textarea id="transcript-textarea"
+                              aria-label="Edit transcript text"
+                              spellcheck="true"
+                              placeholder="Transcript text..."></textarea>
+                    <div class="transcript-editor-status">
+                        <span id="transcript-unsaved" class="unsaved-indicator" style="display: none;">
+                            &#9679; Unsaved changes
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Normal mode actions -->
+                <div class="transcript-actions" id="transcript-view-actions">
+                    <button id="transcript-copy" class="btn-copy" type="button" aria-label="Copy transcript to clipboard">
+                        Copy Text
+                    </button>
+                    <a id="transcript-download" class="btn-download" href="#" download>Download Bundle</a>
+                </div>
+
+                <!-- Edit mode actions (hidden by default) -->
+                <div class="transcript-actions transcript-edit-actions" id="transcript-edit-actions" style="display: none;">
+                    <button id="transcript-save" class="btn btn-primary btn-small" type="button">
+                        Save Changes
+                    </button>
+                    <button id="transcript-cancel" class="btn btn-secondary btn-small" type="button">
+                        Cancel
+                    </button>
+                </div>
+            </aside>
+
+            <!-- Action Buttons -->
+            <section class="actions-section" aria-labelledby="actions-heading">
+                <h2 id="actions-heading" class="visually-hidden">Additional Actions</h2>
+                <button id="btn-open-folder"
+                        class="btn btn-secondary"
+                        type="button"
+                        disabled>
+                    Open Output Folder
+                </button>
+                <button id="btn-reset"
+                        class="btn btn-secondary"
+                        type="button">
+                    Reset
+                </button>
+            </section>
+
+            <!-- Safety Notice -->
+            <aside class="safety-notice" role="note" aria-label="Safety information">
+                <span aria-hidden="true">&#9888;</span>
+                <span>Records CALL OUTPUT ONLY. Microphone is never recorded.</span>
+            </aside>
+        </main>
+
+        <!-- Connection Status -->
+        <footer class="connection-status" id="connection-status" role="contentinfo">
+            <span class="connection-dot" aria-hidden="true"></span>
+            <span id="connection-text">Connecting...</span>
+        </footer>
+    </div>
+
+    <script src="/static/js/websocket.js"></script>
+    <script src="/static/js/ui.js"></script>
+    <script src="/static/js/keyboard.js"></script>
+    <script src="/static/js/startup-check.js"></script>
+    <script src="/static/js/setup-wizard.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

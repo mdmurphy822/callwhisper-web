@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    CallWhisper WiX MSI Installer Configuration
+
+    This creates an MSI installer suitable for enterprise deployment via:
+    - SCCM (System Center Configuration Manager)
+    - GPO (Group Policy Object)
+    - Manual installation
+
+    The resulting MSI:
+    - Installs to Program Files\CallWhisper
+    - Creates Start Menu shortcut
+    - Supports silent installation: msiexec /i CallWhisper.msi /qn
+    - Supports upgrades (same UpgradeCode)
+
+    Requirements:
+    - WiX Toolset 3.11 or later
+    - Build using scripts/build-msi.ps1
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+
+    <!-- Product definition -->
+    <Product
+        Id="*"
+        Name="CallWhisper"
+        Language="1033"
+        Version="1.0.0.0"
+        Manufacturer="CallWhisper"
+        UpgradeCode="B8A5D9E3-4F6C-4A7B-9D1E-2C3F4A5B6C7D">
+
+        <Package
+            InstallerVersion="500"
+            Compressed="yes"
+            InstallScope="perMachine"
+            Description="CallWhisper - Voice Transcriber for Cisco Jabber/Finesse"
+            Comments="Fully offline voice transcription application"
+            Manufacturer="CallWhisper" />
+
+        <!-- Upgrade handling - allows upgrades without uninstall -->
+        <MajorUpgrade
+            DowngradeErrorMessage="A newer version of CallWhisper is already installed."
+            AllowSameVersionUpgrades="yes" />
+
+        <!-- Embed all files in the MSI -->
+        <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+        <!-- Installation UI - minimal for silent installs -->
+        <UIRef Id="WixUI_Minimal" />
+        <WixVariable Id="WixUILicenseRtf" Value="license.rtf" />
+
+        <!-- Feature definition -->
+        <Feature Id="ProductFeature" Title="CallWhisper" Level="1" Display="expand" ConfigurableDirectory="INSTALLFOLDER">
+            <ComponentGroupRef Id="ProductComponents" />
+            <ComponentGroupRef Id="VendorComponents" />
+            <ComponentGroupRef Id="ModelComponents" />
+            <ComponentGroupRef Id="DataDirComponents" />
+            <ComponentRef Id="ApplicationShortcut" />
+            <ComponentRef Id="VersionFile" />
+        </Feature>
+
+        <!-- Icon for Add/Remove Programs -->
+        <Icon Id="CallWhisperIcon" SourceFile="$(var.SourceDir)\CallWhisper.exe" />
+        <Property Id="ARPPRODUCTICON" Value="CallWhisperIcon" />
+        <Property Id="ARPHELPLINK" Value="https://github.com/callwhisper/callwhisper" />
+        <Property Id="ARPURLINFOABOUT" Value="https://github.com/callwhisper/callwhisper" />
+
+    </Product>
+
+    <!-- Directory structure -->
+    <Fragment>
+        <Directory Id="TARGETDIR" Name="SourceDir">
+            <!-- Program Files\CallWhisper -->
+            <Directory Id="ProgramFiles64Folder">
+                <Directory Id="INSTALLFOLDER" Name="CallWhisper">
+                    <!-- Vendor binaries (ffmpeg, whisper-cli) -->
+                    <Directory Id="VendorFolder" Name="vendor" />
+                    <!-- Whisper models -->
+                    <Directory Id="ModelsFolder" Name="models" />
+                    <!-- User data directory -->
+                    <Directory Id="DataFolder" Name="data">
+                        <Directory Id="ConfigFolder" Name="config" />
+                        <Directory Id="OutputFolder" Name="output" />
+                        <Directory Id="LogsFolder" Name="logs" />
+                        <Directory Id="CheckpointsFolder" Name="checkpoints" />
+                    </Directory>
+                </Directory>
+            </Directory>
+
+            <!-- Start Menu -->
+            <Directory Id="ProgramMenuFolder">
+                <Directory Id="ApplicationProgramsFolder" Name="CallWhisper" />
+            </Directory>
+        </Directory>
+    </Fragment>
+
+    <!-- Start Menu Shortcut -->
+    <Fragment>
+        <DirectoryRef Id="ApplicationProgramsFolder">
+            <Component Id="ApplicationShortcut" Guid="A1B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D">
+                <Shortcut
+                    Id="ApplicationStartMenuShortcut"
+                    Name="CallWhisper"
+                    Description="Voice Transcriber for Cisco Jabber/Finesse"
+                    Target="[INSTALLFOLDER]CallWhisper.exe"
+                    WorkingDirectory="INSTALLFOLDER"
+                    Icon="CallWhisperIcon" />
+                <RemoveFolder Id="RemoveApplicationProgramsFolder" On="uninstall" />
+                <RegistryValue
+                    Root="HKCU"
+                    Key="Software\CallWhisper"
+                    Name="installed"
+                    Type="integer"
+                    Value="1"
+                    KeyPath="yes" />
+            </Component>
+        </DirectoryRef>
+    </Fragment>
+
+    <!-- Version file for portable mode detection -->
+    <Fragment>
+        <DirectoryRef Id="INSTALLFOLDER">
+            <Component Id="VersionFile" Guid="F1E2D3C4-B5A6-4978-8A9B-0C1D2E3F4A5B">
+                <File Id="VersionJson" Source="$(var.SourceDir)\version.json" KeyPath="yes" />
+            </Component>
+        </DirectoryRef>
+    </Fragment>
+
+    <!-- Data directory structure (empty directories) -->
+    <Fragment>
+        <ComponentGroup Id="DataDirComponents">
+            <Component Id="ConfigDir" Guid="11111111-1111-1111-1111-111111111111" Directory="ConfigFolder">
+                <CreateFolder />
+                <RegistryValue Root="HKCU" Key="Software\CallWhisper\Dirs" Name="config" Type="string" Value="1" KeyPath="yes" />
+            </Component>
+            <Component Id="OutputDir" Guid="22222222-2222-2222-2222-222222222222" Directory="OutputFolder">
+                <CreateFolder />
+                <RegistryValue Root="HKCU" Key="Software\CallWhisper\Dirs" Name="output" Type="string" Value="1" KeyPath="yes" />
+            </Component>
+            <Component Id="LogsDir" Guid="33333333-3333-3333-3333-333333333333" Directory="LogsFolder">
+                <CreateFolder />
+                <RegistryValue Root="HKCU" Key="Software\CallWhisper\Dirs" Name="logs" Type="string" Value="1" KeyPath="yes" />
+            </Component>
+            <Component Id="CheckpointsDir" Guid="44444444-4444-4444-4444-444444444444" Directory="CheckpointsFolder">
+                <CreateFolder />
+                <RegistryValue Root="HKCU" Key="Software\CallWhisper\Dirs" Name="checkpoints" Type="string" Value="1" KeyPath="yes" />
+            </Component>
+        </ComponentGroup>
+    </Fragment>
+
+    <!-- Vendor components (populated by heat.exe) -->
+    <Fragment>
+        <ComponentGroup Id="VendorComponents" Directory="VendorFolder">
+            <!-- Components will be generated by heat.exe -->
+        </ComponentGroup>
+    </Fragment>
+
+    <!-- Model components (populated by heat.exe) -->
+    <Fragment>
+        <ComponentGroup Id="ModelComponents" Directory="ModelsFolder">
+            <!-- Components will be generated by heat.exe -->
+        </ComponentGroup>
+    </Fragment>
+
+    <!-- Main product components (populated by heat.exe) -->
+    <Fragment>
+        <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+            <!-- Components will be generated by heat.exe -->
+        </ComponentGroup>
+    </Fragment>
+
+</Wix>

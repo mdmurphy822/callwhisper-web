@@ -35,7 +35,7 @@ ALLOWED_HOSTS = frozenset([
     '127.0.0.1',
     'localhost',
     '::1',
-    '0.0.0.0',  # Binding address
+    '0.0.0.0',  # Binding address  # nosec B104
 ])
 
 # Allowed port range (restrict to reasonable local service ports)

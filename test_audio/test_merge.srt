@@ -1,0 +1,23 @@
+1
+00:00:00,000 --> 00:00:13,000
+ I have the pleasure to present to you Dr. Martin Luther King, Jr.
+
+2
+00:00:13,000 --> 00:00:38,340
+ I am happy to join with you today in what will go down in history as the greatest demonstration for freedom in the history of our nation.
+
+3
+00:00:38,340 --> 00:00:55,640
+ Five score years ago, a great American in whose symbolic shadow we stand today signed the Emancipation Proclamation.
+
+4
+00:00:55,640 --> 00:01:11,540
+ This momentous decree came as a great beacon light of hope to millions of Negro slaves who had been seared in the flames of withering injustice.
+
+5
+00:01:11,540 --> 00:01:21,920
+ It came as a joyous daybreak to end the long night of their captivity.
+
+6
+00:01:21,920 --> 00:01:30,000
+ But one hundred years later, the Negro still is...

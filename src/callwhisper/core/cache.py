@@ -22,6 +22,7 @@ logger = get_core_logger()
 @dataclass
 class CacheConfig:
     """Configuration for transcription cache."""
+
     max_entries: int = 100
     ttl_seconds: int = 3600  # 1 hour
     enabled: bool = True
@@ -34,7 +35,14 @@ class CacheEntry:
     Uses __slots__ for memory efficiency (~40% savings per entry).
     Based on LibV2 introduction-to-python patterns.
     """
-    __slots__ = ('transcript', 'created_at', 'access_count', 'last_accessed', 'metadata')
+
+    __slots__ = (
+        "transcript",
+        "created_at",
+        "access_count",
+        "last_accessed",
+        "metadata",
+    )
 
     def __init__(
         self,
@@ -42,7 +50,7 @@ class CacheEntry:
         created_at: float,
         access_count: int = 0,
         last_accessed: Optional[float] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ):
         self.transcript = transcript
         self.created_at = created_at
@@ -108,10 +116,7 @@ class TranscriptionCache:
             return
 
         # Use dict.items() view for memory-efficient iteration
-        oldest_key = min(
-            self._cache.items(),
-            key=lambda x: x[1].last_accessed
-        )[0]
+        oldest_key = min(self._cache.items(), key=lambda x: x[1].last_accessed)[0]
 
         del self._cache[oldest_key]
         self._stats["evictions"] += 1
@@ -122,7 +127,8 @@ class TranscriptionCache:
         """Remove all expired entries. Returns count removed."""
         now = time.time()
         expired_keys = [
-            key for key, entry in self._cache.items()
+            key
+            for key, entry in self._cache.items()
             if now - entry.created_at > self.config.ttl_seconds
         ]
 
@@ -163,9 +169,7 @@ class TranscriptionCache:
             self._stats["hits"] += 1
 
             logger.debug(
-                "cache_hit",
-                audio_hash=audio_hash[:8],
-                access_count=entry.access_count
+                "cache_hit", audio_hash=audio_hash[:8], access_count=entry.access_count
             )
 
             return entry.transcript
@@ -174,7 +178,7 @@ class TranscriptionCache:
         self,
         audio_hash: str,
         transcript: str,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         Cache a transcript for an audio hash.
@@ -204,7 +208,7 @@ class TranscriptionCache:
                 "cache_set",
                 audio_hash=audio_hash[:8],
                 transcript_length=len(transcript),
-                cache_size=len(self._cache)
+                cache_size=len(self._cache),
             )
 
     def invalidate(self, audio_hash: str) -> bool:
@@ -239,8 +243,7 @@ class TranscriptionCache:
         with self._lock:
             total_requests = self._stats["hits"] + self._stats["misses"]
             hit_rate = (
-                self._stats["hits"] / total_requests
-                if total_requests > 0 else 0.0
+                self._stats["hits"] / total_requests if total_requests > 0 else 0.0
             )
 
             return {
@@ -269,7 +272,9 @@ class TranscriptionCache:
                 "transcript_length": len(entry.transcript),
                 "created_at": entry.created_at,
                 "age_seconds": now - entry.created_at,
-                "ttl_remaining": max(0, self.config.ttl_seconds - (now - entry.created_at)),
+                "ttl_remaining": max(
+                    0, self.config.ttl_seconds - (now - entry.created_at)
+                ),
                 "access_count": entry.access_count,
                 "last_accessed": entry.last_accessed,
                 "metadata": entry.metadata,

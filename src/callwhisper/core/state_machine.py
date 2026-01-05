@@ -36,6 +36,7 @@ class RecordingState(str, Enum):
                     ↓
                 RECOVERING → (resume point)
     """
+
     IDLE = "idle"
     INITIALIZING = "initializing"
     RECORDING = "recording"
@@ -50,48 +51,25 @@ class RecordingState(str, Enum):
 
 # Define valid state transitions
 VALID_TRANSITIONS: Dict[RecordingState, Set[RecordingState]] = {
-    RecordingState.IDLE: {
-        RecordingState.INITIALIZING,
-        RecordingState.RECOVERING
-    },
-    RecordingState.INITIALIZING: {
-        RecordingState.RECORDING,
-        RecordingState.ERROR
-    },
-    RecordingState.RECORDING: {
-        RecordingState.STOPPING,
-        RecordingState.ERROR
-    },
-    RecordingState.STOPPING: {
-        RecordingState.NORMALIZING,
-        RecordingState.ERROR
-    },
-    RecordingState.NORMALIZING: {
-        RecordingState.TRANSCRIBING,
-        RecordingState.ERROR
-    },
+    RecordingState.IDLE: {RecordingState.INITIALIZING, RecordingState.RECOVERING},
+    RecordingState.INITIALIZING: {RecordingState.RECORDING, RecordingState.ERROR},
+    RecordingState.RECORDING: {RecordingState.STOPPING, RecordingState.ERROR},
+    RecordingState.STOPPING: {RecordingState.NORMALIZING, RecordingState.ERROR},
+    RecordingState.NORMALIZING: {RecordingState.TRANSCRIBING, RecordingState.ERROR},
     RecordingState.TRANSCRIBING: {
         RecordingState.BUNDLING,
         RecordingState.COMPLETED,  # If bundling disabled
-        RecordingState.ERROR
+        RecordingState.ERROR,
     },
-    RecordingState.BUNDLING: {
-        RecordingState.COMPLETED,
-        RecordingState.ERROR
-    },
-    RecordingState.COMPLETED: {
-        RecordingState.IDLE
-    },
-    RecordingState.ERROR: {
-        RecordingState.IDLE,
-        RecordingState.RECOVERING
-    },
+    RecordingState.BUNDLING: {RecordingState.COMPLETED, RecordingState.ERROR},
+    RecordingState.COMPLETED: {RecordingState.IDLE},
+    RecordingState.ERROR: {RecordingState.IDLE, RecordingState.RECOVERING},
     RecordingState.RECOVERING: {
         RecordingState.IDLE,
         RecordingState.NORMALIZING,
         RecordingState.TRANSCRIBING,
         RecordingState.BUNDLING,
-        RecordingState.ERROR
+        RecordingState.ERROR,
     },
 }
 
@@ -99,6 +77,7 @@ VALID_TRANSITIONS: Dict[RecordingState, Set[RecordingState]] = {
 @dataclass
 class StateTransitionEvent:
     """Record of a state transition."""
+
     event_id: str
     from_state: RecordingState
     to_state: RecordingState
@@ -167,7 +146,7 @@ class StateMachine:
         to_state: RecordingState,
         session_id: Optional[str] = None,
         error_message: Optional[str] = None,
-        **metadata
+        **metadata,
     ) -> StateTransitionEvent:
         """
         Perform atomic state transition.
@@ -192,12 +171,12 @@ class StateMachine:
                     "invalid_state_transition_attempted",
                     from_state=self._state.value,
                     to_state=to_state.value,
-                    valid_transitions=[s.value for s in valid]
+                    valid_transitions=[s.value for s in valid],
                 )
                 raise InvalidStateTransitionError(
                     from_state=self._state.value,
                     to_state=to_state.value,
-                    valid_transitions=[s.value for s in valid]
+                    valid_transitions=[s.value for s in valid],
                 )
 
             # Create event record
@@ -209,7 +188,7 @@ class StateMachine:
                 timestamp=datetime.now().isoformat(),
                 session_id=session_id or self._current_session_id,
                 metadata=metadata,
-                error_message=error_message
+                error_message=error_message,
             )
 
             # Update state
@@ -235,7 +214,7 @@ class StateMachine:
                 to_state=to_state.value,
                 session_id=event.session_id,
                 event_id=event.event_id,
-                **metadata
+                **metadata,
             )
 
         # Notify callbacks outside the lock
@@ -251,9 +230,13 @@ class StateMachine:
             except Exception as e:
                 logger.error(
                     "state_callback_error",
-                    callback=callback.__name__ if hasattr(callback, '__name__') else str(callback),
+                    callback=(
+                        callback.__name__
+                        if hasattr(callback, "__name__")
+                        else str(callback)
+                    ),
                     error=str(e),
-                    event_id=event.event_id
+                    event_id=event.event_id,
                 )
 
     async def reset(self) -> None:
@@ -271,7 +254,11 @@ class StateMachine:
 
     def is_busy(self) -> bool:
         """Check if state machine is in a busy state (not IDLE or COMPLETED)."""
-        return self._state not in {RecordingState.IDLE, RecordingState.COMPLETED, RecordingState.ERROR}
+        return self._state not in {
+            RecordingState.IDLE,
+            RecordingState.COMPLETED,
+            RecordingState.ERROR,
+        }
 
     def is_recording(self) -> bool:
         """Check if currently recording."""
@@ -283,7 +270,7 @@ class StateMachine:
             RecordingState.STOPPING,
             RecordingState.NORMALIZING,
             RecordingState.TRANSCRIBING,
-            RecordingState.BUNDLING
+            RecordingState.BUNDLING,
         }
 
 

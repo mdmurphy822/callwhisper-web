@@ -29,6 +29,7 @@ T = TypeVar("T")
 @dataclass
 class IdempotencyConfig:
     """Configuration for idempotency manager."""
+
     cache_ttl: int = 86400  # 24 hours default
     max_entries: int = 1000
     enabled: bool = True
@@ -41,7 +42,8 @@ class IdempotencyRecord:
 
     Uses __slots__ for memory efficiency (~40% savings per entry).
     """
-    __slots__ = ('result', 'created_at', 'completed', 'error', 'metadata')
+
+    __slots__ = ("result", "created_at", "completed", "error", "metadata")
 
     result: Any
     created_at: float
@@ -55,7 +57,7 @@ class IdempotencyRecord:
         created_at: Optional[float] = None,
         completed: bool = False,
         error: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ):
         self.result = result
         self.created_at = created_at or time.time()
@@ -153,18 +155,12 @@ class IdempotencyManager:
             return
 
         # Only evict completed records
-        completed_records = [
-            (k, v) for k, v in self._records.items()
-            if v.completed
-        ]
+        completed_records = [(k, v) for k, v in self._records.items() if v.completed]
 
         if not completed_records:
             return
 
-        oldest_key = min(
-            completed_records,
-            key=lambda x: x[1].created_at
-        )[0]
+        oldest_key = min(completed_records, key=lambda x: x[1].created_at)[0]
 
         del self._records[oldest_key]
         logger.debug("idempotency_eviction", key=oldest_key[:16])
@@ -173,7 +169,8 @@ class IdempotencyManager:
         """Remove all expired records. Returns count removed."""
         now = time.time()
         expired_keys = [
-            key for key, record in self._records.items()
+            key
+            for key, record in self._records.items()
             if now - record.created_at > self.config.cache_ttl
         ]
 
@@ -213,7 +210,7 @@ class IdempotencyManager:
                 logger.warning(
                     "idempotency_in_progress",
                     key=idempotency_key[:16],
-                    age_seconds=time.time() - record.created_at
+                    age_seconds=time.time() - record.created_at,
                 )
                 raise OperationInProgressError(
                     f"Operation {idempotency_key[:16]} already in progress"
@@ -225,7 +222,7 @@ class IdempotencyManager:
             logger.info(
                 "idempotency_hit",
                 key=idempotency_key[:16],
-                had_error=record.error is not None
+                had_error=record.error is not None,
             )
 
             if record.error:
@@ -233,9 +230,7 @@ class IdempotencyManager:
             return (True, record.result)
 
     def start(
-        self,
-        idempotency_key: str,
-        metadata: Optional[Dict[str, Any]] = None
+        self, idempotency_key: str, metadata: Optional[Dict[str, Any]] = None
     ) -> None:
         """
         Mark operation as started (in progress).
@@ -256,20 +251,20 @@ class IdempotencyManager:
                 created_at=time.time(),
                 completed=False,
                 error=None,
-                metadata=metadata or {}
+                metadata=metadata or {},
             )
 
             logger.debug(
                 "idempotency_start",
                 key=idempotency_key[:16],
-                records_count=len(self._records)
+                records_count=len(self._records),
             )
 
     def complete(
         self,
         idempotency_key: str,
         result: Any,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         Mark operation as completed successfully.
@@ -293,19 +288,16 @@ class IdempotencyManager:
                     created_at=time.time(),
                     completed=True,
                     error=None,
-                    metadata=metadata or {}
+                    metadata=metadata or {},
                 )
 
-            logger.debug(
-                "idempotency_complete",
-                key=idempotency_key[:16]
-            )
+            logger.debug("idempotency_complete", key=idempotency_key[:16])
 
     def fail(
         self,
         idempotency_key: str,
         error: str,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         Mark operation as failed.
@@ -330,14 +322,10 @@ class IdempotencyManager:
                     created_at=time.time(),
                     completed=True,
                     error=error,
-                    metadata=metadata or {}
+                    metadata=metadata or {},
                 )
 
-            logger.warning(
-                "idempotency_fail",
-                key=idempotency_key[:16],
-                error=error
-            )
+            logger.warning("idempotency_fail", key=idempotency_key[:16], error=error)
 
     def cancel(self, idempotency_key: str) -> bool:
         """
@@ -349,19 +337,12 @@ class IdempotencyManager:
         with self._lock:
             if idempotency_key in self._records:
                 del self._records[idempotency_key]
-                logger.debug(
-                    "idempotency_cancel",
-                    key=idempotency_key[:16]
-                )
+                logger.debug("idempotency_cancel", key=idempotency_key[:16])
                 return True
             return False
 
     def get_or_execute(
-        self,
-        idempotency_key: str,
-        func: Callable[..., T],
-        *args,
-        **kwargs
+        self, idempotency_key: str, func: Callable[..., T], *args, **kwargs
     ) -> T:
         """
         Get cached result or execute function.
@@ -404,11 +385,7 @@ class IdempotencyManager:
             raise
 
     async def get_or_execute_async(
-        self,
-        idempotency_key: str,
-        func: Callable[..., T],
-        *args,
-        **kwargs
+        self, idempotency_key: str, func: Callable[..., T], *args, **kwargs
     ) -> T:
         """
         Async version of get_or_execute.
@@ -439,25 +416,15 @@ class IdempotencyManager:
     def get_stats(self) -> Dict[str, Any]:
         """Get idempotency manager statistics."""
         with self._lock:
-            in_progress = sum(
-                1 for r in self._records.values()
-                if not r.completed
-            )
-            completed = sum(
-                1 for r in self._records.values()
-                if r.completed
-            )
-            failed = sum(
-                1 for r in self._records.values()
-                if r.completed and r.error
-            )
+            in_progress = sum(1 for r in self._records.values() if not r.completed)
+            completed = sum(1 for r in self._records.values() if r.completed)
+            failed = sum(1 for r in self._records.values() if r.completed and r.error)
 
-            total_requests = (
-                self._stats["cache_hits"] + self._stats["cache_misses"]
-            )
+            total_requests = self._stats["cache_hits"] + self._stats["cache_misses"]
             hit_rate = (
                 self._stats["cache_hits"] / total_requests
-                if total_requests > 0 else 0.0
+                if total_requests > 0
+                else 0.0
             )
 
             return {
@@ -487,11 +454,13 @@ class IdempotencyManager:
 
 class OperationInProgressError(Exception):
     """Raised when attempting to start a duplicate operation."""
+
     pass
 
 
 class IdempotencyRecordedError(Exception):
     """Raised when replaying a recorded error from a previous attempt."""
+
     pass
 
 
@@ -501,7 +470,7 @@ _manager_lock = threading.Lock()
 
 
 def get_idempotency_manager(
-    config: Optional[IdempotencyConfig] = None
+    config: Optional[IdempotencyConfig] = None,
 ) -> IdempotencyManager:
     """Get or create the global idempotency manager."""
     global _manager

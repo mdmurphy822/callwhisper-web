@@ -17,11 +17,12 @@ from .logging_config import get_core_logger
 
 logger = get_core_logger()
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class CapabilityType(str, Enum):
     """Types of capabilities in the system."""
+
     TRANSCRIPTION = "transcription"
     AUDIO_NORMALIZATION = "audio_normalization"
     AUDIO_CONVERSION = "audio_conversion"
@@ -40,6 +41,7 @@ class Capability:
         is_available: Function to check if handler is currently available
         metadata: Additional info about the capability
     """
+
     name: str
     handler: Callable
     priority: int = 0
@@ -55,6 +57,7 @@ class Capability:
 @dataclass
 class CapabilityMatch:
     """Result of a capability lookup."""
+
     capability: Capability
     score: float  # 0.0 to 1.0, higher is better match
 
@@ -79,11 +82,7 @@ class CapabilityRegistry:
         self._capabilities: Dict[str, List[Capability]] = {}
         self._fallback_enabled = True
 
-    def register(
-        self,
-        capability_type: str,
-        capability: Capability
-    ) -> None:
+    def register(self, capability_type: str, capability: Capability) -> None:
         """
         Register a capability handler.
 
@@ -98,22 +97,16 @@ class CapabilityRegistry:
             self._capabilities[capability_type].append(capability)
 
             # Sort by priority (highest first)
-            self._capabilities[capability_type].sort(
-                key=lambda c: -c.priority
-            )
+            self._capabilities[capability_type].sort(key=lambda c: -c.priority)
 
             logger.info(
                 "capability_registered",
                 capability_type=capability_type,
                 name=capability.name,
-                priority=capability.priority
+                priority=capability.priority,
             )
 
-    def unregister(
-        self,
-        capability_type: str,
-        name: str
-    ) -> bool:
+    def unregister(self, capability_type: str, name: str) -> bool:
         """
         Unregister a capability by name.
 
@@ -126,8 +119,7 @@ class CapabilityRegistry:
 
             original_len = len(self._capabilities[capability_type])
             self._capabilities[capability_type] = [
-                c for c in self._capabilities[capability_type]
-                if c.name != name
+                c for c in self._capabilities[capability_type] if c.name != name
             ]
 
             removed = len(self._capabilities[capability_type]) < original_len
@@ -136,15 +128,13 @@ class CapabilityRegistry:
                 logger.info(
                     "capability_unregistered",
                     capability_type=capability_type,
-                    name=name
+                    name=name,
                 )
 
             return removed
 
     def get_handler(
-        self,
-        capability_type: str,
-        require_available: bool = True
+        self, capability_type: str, require_available: bool = True
     ) -> Optional[Callable]:
         """
         Get the best available handler for a capability type.
@@ -168,7 +158,7 @@ class CapabilityRegistry:
                         "capability_selected",
                         capability_type=capability_type,
                         name=cap.name,
-                        priority=cap.priority
+                        priority=cap.priority,
                     )
                     return cap.handler
 
@@ -176,14 +166,12 @@ class CapabilityRegistry:
                 "no_capability_found",
                 capability_type=capability_type,
                 registered_count=len(capabilities),
-                require_available=require_available
+                require_available=require_available,
             )
             return None
 
     def get_capability(
-        self,
-        capability_type: str,
-        require_available: bool = True
+        self, capability_type: str, require_available: bool = True
     ) -> Optional[Capability]:
         """
         Get the best available capability (not just handler).
@@ -200,9 +188,7 @@ class CapabilityRegistry:
             return None
 
     def get_all_handlers(
-        self,
-        capability_type: str,
-        only_available: bool = False
+        self, capability_type: str, only_available: bool = False
     ) -> List[Callable]:
         """
         Get all handlers for a capability type (for fallback chains).
@@ -216,10 +202,7 @@ class CapabilityRegistry:
                 return [c.handler for c in capabilities if c.is_available()]
             return [c.handler for c in capabilities]
 
-    def get_capability_info(
-        self,
-        capability_type: str
-    ) -> List[Dict[str, Any]]:
+    def get_capability_info(self, capability_type: str) -> List[Dict[str, Any]]:
         """Get info about all registered capabilities of a type."""
         with self._lock:
             capabilities = self._capabilities.get(capability_type, [])
@@ -247,7 +230,7 @@ class CapabilityRegistry:
                 "total_capabilities": sum(
                     len(caps) for caps in self._capabilities.values()
                 ),
-                "by_type": {}
+                "by_type": {},
             }
 
             for cap_type, caps in self._capabilities.items():
@@ -285,7 +268,7 @@ def register_capability(
     handler: Callable,
     priority: int = 0,
     is_available: Optional[Callable[[], bool]] = None,
-    **metadata
+    **metadata,
 ) -> None:
     """Convenience function to register a capability."""
     cap = Capability(

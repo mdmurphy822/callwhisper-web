@@ -38,12 +38,12 @@ VIRTUAL_AUDIO_PATTERNS_WINDOWS = [
 ]
 
 VIRTUAL_AUDIO_PATTERNS_LINUX = [
-    "monitor",           # PulseAudio monitor sinks
-    ".monitor",          # PulseAudio monitor suffix
-    "null",              # Null sink
-    "loopback",          # ALSA/Pulse loopback
-    "pipewire",          # PipeWire
-    "virtual",           # Generic virtual device
+    "monitor",  # PulseAudio monitor sinks
+    ".monitor",  # PulseAudio monitor suffix
+    "null",  # Null sink
+    "loopback",  # ALSA/Pulse loopback
+    "pipewire",  # PipeWire
+    "virtual",  # Generic virtual device
 ]
 
 # Combined patterns (used for backward compatibility)
@@ -108,6 +108,7 @@ RECOMMENDED_DEVICES = _get_recommended_devices()
 @dataclass
 class VirtualAudioDevice:
     """Detected virtual audio device."""
+
     name: str
     device_type: str  # "vb-cable", "stereo-mix", "voicemeeter", "other"
     is_recommended: bool
@@ -116,6 +117,7 @@ class VirtualAudioDevice:
 @dataclass
 class SetupStatus:
     """First-run setup status."""
+
     virtual_audio_detected: bool
     detected_devices: List[VirtualAudioDevice]
     all_audio_devices: List[str]
@@ -151,11 +153,13 @@ def detect_virtual_audio_devices() -> List[VirtualAudioDevice]:
                 # Determine device type based on platform
                 device_type, is_recommended = _classify_device(device_lower, platform)
 
-                virtual_devices.append(VirtualAudioDevice(
-                    name=device,
-                    device_type=device_type,
-                    is_recommended=is_recommended,
-                ))
+                virtual_devices.append(
+                    VirtualAudioDevice(
+                        name=device,
+                        device_type=device_type,
+                        is_recommended=is_recommended,
+                    )
+                )
 
                 logger.debug(
                     "virtual_audio_device_found",
@@ -297,6 +301,7 @@ def _check_setup_skipped() -> bool:
             return False
 
         import json
+
         with open(config_path, "r") as f:
             config = json.load(f)
 
@@ -304,9 +309,7 @@ def _check_setup_skipped() -> bool:
 
     except Exception as e:
         logger.warning(
-            "setup_status_check_failed",
-            error=str(e),
-            error_type=type(e).__name__
+            "setup_status_check_failed", error=str(e), error_type=type(e).__name__
         )
         return False
 
@@ -329,6 +332,7 @@ def mark_setup_complete(skipped: bool = False) -> bool:
 
         if config_path.exists():
             import json
+
             with open(config_path, "r") as f:
                 config = json.load(f)
 
@@ -337,6 +341,7 @@ def mark_setup_complete(skipped: bool = False) -> bool:
         config["setup_timestamp"] = __import__("datetime").datetime.now().isoformat()
 
         import json
+
         config_path.parent.mkdir(parents=True, exist_ok=True)
         with open(config_path, "w") as f:
             json.dump(config, f, indent=2)

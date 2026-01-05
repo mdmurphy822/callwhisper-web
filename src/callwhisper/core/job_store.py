@@ -28,6 +28,7 @@ class JobCheckpoint:
     Stores the current state of a job so it can be resumed
     after a crash or restart.
     """
+
     job_id: str
     audio_path: str
     status: str  # "recording", "processing", "chunk_N", "complete", "failed"
@@ -119,14 +120,12 @@ class JobStore:
                 "checkpoint_saved",
                 job_id=checkpoint.job_id,
                 status=checkpoint.status,
-                progress=f"{checkpoint.chunks_completed}/{checkpoint.total_chunks}"
+                progress=f"{checkpoint.chunks_completed}/{checkpoint.total_chunks}",
             )
 
         except Exception as e:
             logger.error(
-                "checkpoint_save_failed",
-                job_id=checkpoint.job_id,
-                error=str(e)
+                "checkpoint_save_failed", job_id=checkpoint.job_id, error=str(e)
             )
             raise
 
@@ -147,11 +146,7 @@ class JobStore:
             return JobCheckpoint.from_dict(data)
 
         except Exception as e:
-            logger.error(
-                "checkpoint_load_failed",
-                job_id=job_id,
-                error=str(e)
-            )
+            logger.error("checkpoint_load_failed", job_id=job_id, error=str(e))
             return None
 
     def get_incomplete_jobs(self) -> List[JobCheckpoint]:
@@ -176,19 +171,12 @@ class JobStore:
                     incomplete.append(checkpoint)
 
             except Exception as e:
-                logger.warning(
-                    "checkpoint_parse_error",
-                    path=str(path),
-                    error=str(e)
-                )
+                logger.warning("checkpoint_parse_error", path=str(path), error=str(e))
 
         # Sort by created_at (most recent first)
         incomplete.sort(key=lambda c: c.created_at, reverse=True)
 
-        logger.info(
-            "incomplete_jobs_found",
-            count=len(incomplete)
-        )
+        logger.info("incomplete_jobs_found", count=len(incomplete))
 
         return incomplete
 
@@ -218,18 +206,10 @@ class JobStore:
             archive_path = self._archive_path / path.name
             shutil.move(str(path), str(archive_path))
 
-            logger.info(
-                "job_completed",
-                job_id=job_id,
-                archived_to=str(archive_path)
-            )
+            logger.info("job_completed", job_id=job_id, archived_to=str(archive_path))
 
         except Exception as e:
-            logger.error(
-                "mark_complete_failed",
-                job_id=job_id,
-                error=str(e)
-            )
+            logger.error("mark_complete_failed", job_id=job_id, error=str(e))
 
     def mark_failed(self, job_id: str, error_message: str) -> None:
         """
@@ -245,11 +225,7 @@ class JobStore:
             checkpoint.updated_at = time.time()
             self.save_checkpoint(checkpoint)
 
-            logger.warning(
-                "job_failed",
-                job_id=job_id,
-                error=error_message
-            )
+            logger.warning("job_failed", job_id=job_id, error=error_message)
 
     def delete_checkpoint(self, job_id: str) -> bool:
         """
@@ -289,17 +265,11 @@ class JobStore:
                     removed += 1
 
             except Exception as e:
-                logger.warning(
-                    "cleanup_error",
-                    path=str(path),
-                    error=str(e)
-                )
+                logger.warning("cleanup_error", path=str(path), error=str(e))
 
         if removed > 0:
             logger.info(
-                "old_checkpoints_cleaned",
-                count=removed,
-                max_age_days=max_age_days
+                "old_checkpoints_cleaned", count=removed, max_age_days=max_age_days
             )
 
         return removed
@@ -323,16 +293,12 @@ class JobStore:
                 jobs.append(JobCheckpoint.from_dict(data))
             except json.JSONDecodeError as e:
                 logger.warning(
-                    "corrupted_checkpoint_skipped",
-                    path=str(path),
-                    error=str(e)
+                    "corrupted_checkpoint_skipped", path=str(path), error=str(e)
                 )
                 continue
             except KeyError as e:
                 logger.warning(
-                    "malformed_checkpoint_skipped",
-                    path=str(path),
-                    missing_field=str(e)
+                    "malformed_checkpoint_skipped", path=str(path), missing_field=str(e)
                 )
                 continue
             except Exception as e:
@@ -340,7 +306,7 @@ class JobStore:
                     "checkpoint_load_error",
                     path=str(path),
                     error=str(e),
-                    error_type=type(e).__name__
+                    error_type=type(e).__name__,
                 )
                 continue
 
@@ -366,7 +332,7 @@ def create_checkpoint(
     job_id: str,
     audio_path: str,
     device_name: Optional[str] = None,
-    ticket_id: Optional[str] = None
+    ticket_id: Optional[str] = None,
 ) -> JobCheckpoint:
     """
     Create and save a new job checkpoint.
@@ -378,7 +344,7 @@ def create_checkpoint(
         audio_path=audio_path,
         status="recording",
         device_name=device_name,
-        ticket_id=ticket_id
+        ticket_id=ticket_id,
     )
 
     store = get_job_store()
@@ -392,7 +358,7 @@ def update_checkpoint(
     status: Optional[str] = None,
     chunks_completed: Optional[int] = None,
     total_chunks: Optional[int] = None,
-    partial_transcript: Optional[str] = None
+    partial_transcript: Optional[str] = None,
 ) -> Optional[JobCheckpoint]:
     """
     Update an existing job checkpoint.

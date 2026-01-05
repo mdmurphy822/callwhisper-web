@@ -32,9 +32,9 @@ logger = get_service_logger()
 TRANSCRIPTION_TIMEOUT_SECONDS = 600
 
 # Adaptive timeout parameters
-MIN_TIMEOUT_SECONDS = 120     # 2 minutes minimum
-MAX_TIMEOUT_SECONDS = 7200    # 2 hours maximum
-TIMEOUT_MULTIPLIER = 3        # 3x audio duration
+MIN_TIMEOUT_SECONDS = 120  # 2 minutes minimum
+MAX_TIMEOUT_SECONDS = 7200  # 2 hours maximum
+TIMEOUT_MULTIPLIER = 3  # 3x audio duration
 
 
 async def get_audio_duration_seconds(audio_path: Path) -> float:
@@ -51,17 +51,22 @@ async def get_audio_duration_seconds(audio_path: Path) -> float:
         RuntimeError: If duration cannot be determined
     """
     ffmpeg_path = get_ffmpeg_path()
-    ffprobe_path = ffmpeg_path.parent / ("ffprobe.exe" if os.name == 'nt' else "ffprobe")
+    ffprobe_path = ffmpeg_path.parent / (
+        "ffprobe.exe" if os.name == "nt" else "ffprobe"
+    )
 
     if not ffprobe_path.exists():
         ffprobe_path = Path("ffprobe")
 
     cmd = [
         str(ffprobe_path),
-        "-v", "error",
-        "-show_entries", "format=duration",
-        "-of", "default=noprint_wrappers=1:nokey=1",
-        str(audio_path)
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        str(audio_path),
     ]
 
     try:
@@ -69,7 +74,7 @@ async def get_audio_duration_seconds(audio_path: Path) -> float:
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
         )
         stdout, stderr = await proc.communicate()
 
@@ -103,7 +108,9 @@ async def transcribe_audio(
     output_folder: Path,
     settings: Settings,
     progress_callback: Optional[Callable[[int, str], Awaitable[None]]] = None,
-    partial_transcript_callback: Optional[Callable[[str, bool], Awaitable[None]]] = None,
+    partial_transcript_callback: Optional[
+        Callable[[str, bool], Awaitable[None]]
+    ] = None,
 ) -> Path:
     """
     Transcribe audio in the output folder.
@@ -140,7 +147,7 @@ async def transcribe_audio(
         logger.info(
             "adaptive_timeout_calculated",
             audio_seconds=audio_duration,
-            timeout_seconds=timeout
+            timeout_seconds=timeout,
         )
     except Exception as e:
         logger.warning("duration_detection_failed", error=str(e))
@@ -172,14 +179,19 @@ async def transcribe_audio(
     # whisper.cpp command - use absolute paths for cross-platform compatibility
     cmd = [
         str(whisper_path.resolve()),
-        "-m", str(model_path.resolve()),
-        "-f", str(normalized_audio.resolve()),
+        "-m",
+        str(model_path.resolve()),
+        "-f",
+        str(normalized_audio.resolve()),
         "-otxt",  # Output text
         "-osrt",  # Output SRT subtitles
-        "-pp",    # Print progress for real-time updates
-        "--language", settings.transcription.language,
-        "--beam-size", str(settings.transcription.beam_size),
-        "--best-of", str(settings.transcription.best_of),
+        "-pp",  # Print progress for real-time updates
+        "--language",
+        settings.transcription.language,
+        "--beam-size",
+        str(settings.transcription.beam_size),
+        "--best-of",
+        str(settings.transcription.best_of),
     ]
 
     log_path = output_folder / "whisper.log"
@@ -189,7 +201,7 @@ async def transcribe_audio(
             "starting_transcription",
             audio_file=str(normalized_audio),
             model=str(model_path.name),
-            language=settings.transcription.language
+            language=settings.transcription.language,
         )
 
         with open(log_path, "w", encoding="utf-8") as log_file:
@@ -201,7 +213,7 @@ async def transcribe_audio(
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             cwd=str(output_folder),
-            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
         )
 
         # Stream stderr for progress updates while respecting timeout
@@ -218,18 +230,17 @@ async def transcribe_audio(
                     # Read small chunks instead of waiting for newlines
                     # whisper uses \r for inline progress updates without newlines
                     chunk = await asyncio.wait_for(
-                        process.stderr.read(256),
-                        timeout=timeout
+                        process.stderr.read(256), timeout=timeout
                     )
                     if not chunk:
                         break
-                    chunk_text = chunk.decode('utf-8', errors='replace')
+                    chunk_text = chunk.decode("utf-8", errors="replace")
                     buffer += chunk_text
                     stderr_lines.append(chunk_text)
 
                     # Parse progress from buffer (format: "progress =  XX%")
                     if progress_callback:
-                        matches = re.findall(r'(\d+)\s*%', buffer)
+                        matches = re.findall(r"(\d+)\s*%", buffer)
                         if matches:
                             whisper_percent = int(matches[-1])  # Use most recent
                             # Only update if progress increased
@@ -239,7 +250,7 @@ async def transcribe_audio(
                                 mapped_percent = 30 + int(whisper_percent * 0.5)
                                 await progress_callback(
                                     mapped_percent,
-                                    f"Transcribing... {whisper_percent}%"
+                                    f"Transcribing... {whisper_percent}%",
                                 )
                             # Keep tail of buffer for partial matches
                             buffer = buffer[-50:]
@@ -256,18 +267,15 @@ async def transcribe_audio(
         except asyncio.TimeoutError:
             process.kill()
             await process.wait()
-            logger.error(
-                "transcription_timeout",
-                timeout_seconds=timeout
-            )
+            logger.error("transcription_timeout", timeout_seconds=timeout)
             raise ProcessTimeoutError(
                 f"Transcription timed out after {timeout} seconds"
             )
 
         # Log output
-        stderr_text = ''.join(stderr_lines)
+        stderr_text = "".join(stderr_lines)
         with open(log_path, "a", encoding="utf-8") as log_file:
-            log_file.write(stdout_data.decode('utf-8', errors='replace'))
+            log_file.write(stdout_data.decode("utf-8", errors="replace"))
             log_file.write(stderr_text)
 
         if process.returncode != 0:
@@ -347,12 +355,12 @@ def srt_to_vtt(srt_path: Path, vtt_path: Optional[Path] = None) -> Path:
         Path to VTT file
     """
     if vtt_path is None:
-        vtt_path = srt_path.with_suffix('.vtt')
+        vtt_path = srt_path.with_suffix(".vtt")
 
     if not srt_path.exists():
         raise FileNotFoundError(f"SRT file not found: {srt_path}")
 
-    with open(srt_path, 'r', encoding='utf-8') as f:
+    with open(srt_path, "r", encoding="utf-8") as f:
         srt_content = f.read()
 
     # Convert SRT to VTT
@@ -363,9 +371,10 @@ def srt_to_vtt(srt_path: Path, vtt_path: Optional[Path] = None) -> Path:
 
     # Replace comma with dot in timestamps
     import re
-    vtt_content += re.sub(r'(\d{2}:\d{2}:\d{2}),(\d{3})', r'\1.\2', srt_content)
 
-    with open(vtt_path, 'w', encoding='utf-8') as f:
+    vtt_content += re.sub(r"(\d{2}:\d{2}:\d{2}),(\d{3})", r"\1.\2", srt_content)
+
+    with open(vtt_path, "w", encoding="utf-8") as f:
         f.write(vtt_content)
 
     return vtt_path
@@ -412,12 +421,17 @@ async def transcribe_chunk(
 
     cmd = [
         str(whisper_path.resolve()),
-        "-m", str(model_path.resolve()),
-        "-f", str(chunk_path.resolve()),
+        "-m",
+        str(model_path.resolve()),
+        "-f",
+        str(chunk_path.resolve()),
         "-otxt",
-        "--language", settings.transcription.language,
-        "--beam-size", str(settings.transcription.beam_size),
-        "--best-of", str(settings.transcription.best_of),
+        "--language",
+        settings.transcription.language,
+        "--beam-size",
+        str(settings.transcription.beam_size),
+        "--best-of",
+        str(settings.transcription.best_of),
     ]
 
     # Calculate timeout for this chunk
@@ -430,7 +444,7 @@ async def transcribe_chunk(
             chunk_path=str(chunk_path),
             fallback_timeout=MIN_TIMEOUT_SECONDS,
             error=str(e),
-            error_type=type(e).__name__
+            error_type=type(e).__name__,
         )
         timeout = MIN_TIMEOUT_SECONDS
 
@@ -439,14 +453,11 @@ async def transcribe_chunk(
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
         cwd=str(output_dir),
-        creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
+        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
     )
 
     try:
-        _, stderr = await asyncio.wait_for(
-            proc.communicate(),
-            timeout=timeout
-        )
+        _, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
     except asyncio.TimeoutError:
         proc.kill()
         await proc.wait()
@@ -474,7 +485,9 @@ async def transcribe_audio_chunked(
     job_id: Optional[str] = None,
     start_from_chunk: int = 0,
     progress_callback: Optional[Callable[[int, str], Awaitable[None]]] = None,
-    partial_transcript_callback: Optional[Callable[[str, bool], Awaitable[None]]] = None,
+    partial_transcript_callback: Optional[
+        Callable[[str, bool], Awaitable[None]]
+    ] = None,
 ) -> Path:
     """
     Transcribe audio using chunks for crash recovery.
@@ -510,7 +523,7 @@ async def transcribe_audio_chunked(
         "chunked_transcription_starting",
         job_id=job_id,
         total_chunks=total_chunks,
-        start_from_chunk=start_from_chunk
+        start_from_chunk=start_from_chunk,
     )
 
     # Load existing transcripts if resuming
@@ -532,7 +545,7 @@ async def transcribe_audio_chunked(
             chunk_index=chunk_idx,
             total_chunks=total_chunks,
             start_time=chunk.start_time,
-            end_time=chunk.end_time
+            end_time=chunk.end_time,
         )
 
         # Transcribe this chunk
@@ -543,8 +556,7 @@ async def transcribe_audio_chunked(
             logger.error("chunk_transcription_failed", chunk=chunk_idx, error=str(e))
             # Save partial progress before re-raising
             partial_file.write_text(
-                "\n---CHUNK_BOUNDARY---\n".join(transcripts),
-                encoding="utf-8"
+                "\n---CHUNK_BOUNDARY---\n".join(transcripts), encoding="utf-8"
             )
             raise
 
@@ -559,19 +571,20 @@ async def transcribe_audio_chunked(
             status=f"chunk_{chunk_idx}",
             chunks_completed=chunk_idx + 1,
             total_chunks=total_chunks,
-            partial_transcript="\n---CHUNK_BOUNDARY---\n".join(transcripts)
+            partial_transcript="\n---CHUNK_BOUNDARY---\n".join(transcripts),
         )
 
         # Save partial transcript file
         partial_file.write_text(
-            "\n---CHUNK_BOUNDARY---\n".join(transcripts),
-            encoding="utf-8"
+            "\n---CHUNK_BOUNDARY---\n".join(transcripts), encoding="utf-8"
         )
 
         # Update progress
         if progress_callback:
             pct = 30 + int(((chunk_idx + 1) / total_chunks) * 50)
-            await progress_callback(pct, f"Transcribing chunk {chunk_idx + 1}/{total_chunks}")
+            await progress_callback(
+                pct, f"Transcribing chunk {chunk_idx + 1}/{total_chunks}"
+            )
 
     # Merge all transcripts
     logger.info("merging_chunk_transcripts", chunk_count=len(transcripts))
@@ -593,7 +606,7 @@ async def transcribe_audio_chunked(
         "chunked_transcription_complete",
         job_id=job_id,
         chunks_processed=total_chunks,
-        transcript_length=len(final_transcript)
+        transcript_length=len(final_transcript),
     )
 
     return transcript_path

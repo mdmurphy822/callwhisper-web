@@ -241,7 +241,7 @@ def get_path_info() -> Dict[str, Any]:
             "logs_dir": str(get_logs_dir()),
             "ffmpeg": str(get_ffmpeg_path()),
             "whisper": str(get_whisper_path()),
-        }
+        },
     }
 
 
@@ -267,7 +267,7 @@ def ensure_data_dirs() -> None:
 import re
 
 # Safe characters for path components: alphanumeric, dash, underscore, dot
-_SAFE_PATH_COMPONENT_PATTERN = re.compile(r'^[a-zA-Z0-9_\-\.]+$')
+_SAFE_PATH_COMPONENT_PATTERN = re.compile(r"^[a-zA-Z0-9_\-\.]+$")
 
 
 def sanitize_path_component(value: str, max_length: int = 128) -> str:
@@ -291,17 +291,17 @@ def sanitize_path_component(value: str, max_length: int = 128) -> str:
         return value
 
     # Check for path traversal patterns
-    if '..' in value:
+    if ".." in value:
         raise ValueError(f"Path traversal detected: contains '..'")
 
-    if '/' in value:
+    if "/" in value:
         raise ValueError(f"Path traversal detected: contains '/'")
 
-    if '\\' in value:
+    if "\\" in value:
         raise ValueError(f"Path traversal detected: contains '\\'")
 
     # Check for null bytes
-    if '\x00' in value:
+    if "\x00" in value:
         raise ValueError("Null byte detected in path component")
 
     # Truncate to max length
@@ -309,7 +309,7 @@ def sanitize_path_component(value: str, max_length: int = 128) -> str:
 
     # Replace unsafe characters with underscore
     if not _SAFE_PATH_COMPONENT_PATTERN.match(value):
-        value = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', value)
+        value = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", value)
 
     return value
 
@@ -331,6 +331,6 @@ def validate_path_within_directory(path: Path, base_dir: Path) -> bool:
         resolved_path = path.resolve()
         resolved_base = base_dir.resolve()
         # Check if resolved path starts with base (using parts to handle edge cases)
-        return resolved_path.parts[:len(resolved_base.parts)] == resolved_base.parts
+        return resolved_path.parts[: len(resolved_base.parts)] == resolved_base.parts
     except (OSError, ValueError):
         return False

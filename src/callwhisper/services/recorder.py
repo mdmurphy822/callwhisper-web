@@ -114,9 +114,12 @@ async def start_recording(session: RecordingSession, settings: Settings) -> Path
         str(ffmpeg_path),
         "-y",  # Overwrite output
         *input_args,
-        "-acodec", "pcm_s16le",  # PCM 16-bit
-        "-ar", str(settings.audio.sample_rate),  # Sample rate
-        "-ac", str(settings.audio.channels),  # Channels
+        "-acodec",
+        "pcm_s16le",  # PCM 16-bit
+        "-ar",
+        str(settings.audio.sample_rate),  # Sample rate
+        "-ac",
+        str(settings.audio.channels),  # Channels
         str(raw_audio_path),
     ]
 
@@ -132,7 +135,7 @@ async def start_recording(session: RecordingSession, settings: Settings) -> Path
             "starting_ffmpeg_recording",
             device=session.device_name,
             output_folder=str(output_folder),
-            session_id=session.id
+            session_id=session.id,
         )
 
         # Start FFmpeg process
@@ -142,7 +145,7 @@ async def start_recording(session: RecordingSession, settings: Settings) -> Path
                 stdin=subprocess.PIPE,
                 stdout=log_file,
                 stderr=subprocess.STDOUT,
-                creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
             )
             with _state_lock:
                 _ffmpeg_process = process
@@ -195,7 +198,7 @@ async def stop_recording() -> Optional[Path]:
         # Send 'q' to FFmpeg to gracefully quit
         if process.stdin:
             try:
-                process.stdin.write(b'q')
+                process.stdin.write(b"q")
                 process.stdin.flush()
             except Exception:
                 pass
@@ -244,7 +247,9 @@ async def finalize_recording(session: RecordingSession) -> Path:
     """
     await stop_recording()
 
-    output_folder = Path(session.output_folder) if session.output_folder else _current_output_folder
+    output_folder = (
+        Path(session.output_folder) if session.output_folder else _current_output_folder
+    )
 
     if not output_folder:
         raise RuntimeError("No output folder found")

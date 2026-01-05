@@ -16,7 +16,14 @@ logger = get_logger(__name__)
 
 # Supported audio file extensions
 SUPPORTED_EXTENSIONS: Set[str] = {
-    '.wav', '.mp3', '.m4a', '.ogg', '.flac', '.aac', '.wma', '.opus'
+    ".wav",
+    ".mp3",
+    ".m4a",
+    ".ogg",
+    ".flac",
+    ".aac",
+    ".wma",
+    ".opus",
 }
 
 # Maximum file size for batch processing (500MB)
@@ -26,6 +33,7 @@ MAX_FILE_SIZE_BYTES = 500 * 1024 * 1024
 @dataclass
 class ScannedFile:
     """Information about a scanned audio file."""
+
     path: Path
     filename: str
     size_bytes: int
@@ -84,7 +92,7 @@ def scan_folder(
                     logger.debug(
                         "file_too_large_skipped",
                         path=str(path),
-                        size_mb=size / (1024 * 1024)
+                        size_mb=size / (1024 * 1024),
                     )
                     continue
 
@@ -92,20 +100,18 @@ def scan_folder(
                     skipped_count += 1
                     continue
 
-                files.append(ScannedFile(
-                    path=path,
-                    filename=path.name,
-                    size_bytes=size,
-                    modified_at=stat.st_mtime,
-                    extension=path.suffix.lower(),
-                ))
+                files.append(
+                    ScannedFile(
+                        path=path,
+                        filename=path.name,
+                        size_bytes=size,
+                        modified_at=stat.st_mtime,
+                        extension=path.suffix.lower(),
+                    )
+                )
             except (OSError, PermissionError) as e:
                 skipped_count += 1
-                logger.warning(
-                    "file_scan_error",
-                    path=str(path),
-                    error=str(e)
-                )
+                logger.warning("file_scan_error", path=str(path), error=str(e))
 
     # Sort by filename (case-insensitive)
     files.sort(key=lambda f: f.filename.lower())
@@ -116,7 +122,7 @@ def scan_folder(
         recursive=recursive,
         files_found=len(files),
         skipped=skipped_count,
-        too_large=too_large_count
+        too_large=too_large_count,
     )
 
     return files
@@ -184,7 +190,7 @@ def get_folder_stats(folder_path: Path, recursive: bool = False) -> dict:
         "extensions": {
             ext: {
                 "count": data["count"],
-                "size_mb": round(data["size_bytes"] / (1024 * 1024), 2)
+                "size_mb": round(data["size_bytes"] / (1024 * 1024), 2),
             }
             for ext, data in extensions.items()
         },

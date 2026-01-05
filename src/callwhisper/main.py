@@ -81,14 +81,13 @@ async def lifespan(app: FastAPI):
         logger.warning(
             "incomplete_sessions_found",
             count=len(incomplete_sessions),
-            sessions=[s.session_id for s in incomplete_sessions]
+            sessions=[s.session_id for s in incomplete_sessions],
         )
 
     # Initialize bulkhead executor for isolated thread pools
     executor = get_executor()
     logger.info(
-        "bulkhead_executor_ready",
-        pools=list(executor.get_all_metrics().keys())
+        "bulkhead_executor_ready", pools=list(executor.get_all_metrics().keys())
     )
 
     # Initialize transcription cache
@@ -101,7 +100,7 @@ async def lifespan(app: FastAPI):
     logger.info(
         "transcription_cache_ready",
         max_entries=cache_config.max_entries,
-        ttl_seconds=cache_config.ttl_seconds
+        ttl_seconds=cache_config.ttl_seconds,
     )
 
     logger.info(
@@ -115,7 +114,7 @@ async def lifespan(app: FastAPI):
         external_connections="blocked",
         transcription_engine="whisper.cpp (local)",
         cors_enabled=settings.security.cors_enabled,
-        rate_limit_enabled=settings.security.rate_limit_enabled
+        rate_limit_enabled=settings.security.rate_limit_enabled,
     )
 
     # Initialize call detector on Windows if enabled
@@ -136,14 +135,13 @@ async def lifespan(app: FastAPI):
             )
             await call_detector.start(detector_config)
             logger.info(
-                "call_detector_started",
-                targets=settings.call_detector.target_processes
+                "call_detector_started", targets=settings.call_detector.target_processes
             )
         except ImportError as e:
             logger.warning(
                 "call_detector_unavailable",
                 error=str(e),
-                message="Install pycaw, wmi, and pywin32 to enable call detection"
+                message="Install pycaw, wmi, and pywin32 to enable call detection",
             )
         except Exception as e:
             logger.error("call_detector_init_failed", error=str(e))
@@ -198,7 +196,10 @@ Use these endpoints to integrate with other systems or automate transcription wo
         {"name": "recording", "description": "Start/stop recording operations"},
         {"name": "transcription", "description": "Transcription and job management"},
         {"name": "recordings", "description": "Access completed recordings"},
-        {"name": "call-detection", "description": "Automatic call detection (Windows only)"},
+        {
+            "name": "call-detection",
+            "description": "Automatic call detection (Windows only)",
+        },
         {"name": "debug", "description": "Debugging and metrics endpoints"},
     ],
 )
@@ -262,6 +263,7 @@ def main():
 
         def open_browser():
             import time
+
             time.sleep(1)  # Wait for server to start
             webbrowser.open(f"http://{settings.server.host}:{settings.server.port}")
 

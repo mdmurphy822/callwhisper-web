@@ -15,6 +15,7 @@ from typing import List
 @dataclass
 class SrtSegment:
     """Represents a single SRT subtitle segment."""
+
     index: int
     start_time: str  # Format: HH:MM:SS,mmm
     end_time: str
@@ -36,8 +37,8 @@ class SrtSegment:
 def _time_to_seconds(time_str: str) -> float:
     """Convert SRT time format (HH:MM:SS,mmm) to seconds."""
     # Handle both comma and period as decimal separator
-    time_str = time_str.replace(',', '.')
-    parts = time_str.split(':')
+    time_str = time_str.replace(",", ".")
+    parts = time_str.split(":")
     hours = int(parts[0])
     minutes = int(parts[1])
     seconds = float(parts[2])
@@ -49,28 +50,31 @@ def _seconds_to_time(seconds: float) -> str:
     hours = int(seconds // 3600)
     minutes = int((seconds % 3600) // 60)
     secs = seconds % 60
-    return f"{hours:02d}:{minutes:02d}:{secs:06.3f}".replace('.', ',')
+    return f"{hours:02d}:{minutes:02d}:{secs:06.3f}".replace(".", ",")
 
 
 def parse_srt(srt_path: Path) -> List[SrtSegment]:
     """Parse SRT file into list of segments."""
-    content = srt_path.read_text(encoding='utf-8')
+    content = srt_path.read_text(encoding="utf-8")
     segments = []
 
     # Split by double newline (segment separator)
-    blocks = re.split(r'\n\n+', content.strip())
+    blocks = re.split(r"\n\n+", content.strip())
 
     for block in blocks:
-        lines = block.strip().split('\n')
+        lines = block.strip().split("\n")
         if len(lines) >= 3:
             try:
                 index = int(lines[0])
                 time_line = lines[1]
-                time_match = re.match(r'(\d{2}:\d{2}:\d{2},\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2},\d{3})', time_line)
+                time_match = re.match(
+                    r"(\d{2}:\d{2}:\d{2},\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2},\d{3})",
+                    time_line,
+                )
                 if time_match:
                     start_time = time_match.group(1)
                     end_time = time_match.group(2)
-                    text = '\n'.join(lines[2:])
+                    text = "\n".join(lines[2:])
                     segments.append(SrtSegment(index, start_time, end_time, text))
             except (ValueError, IndexError):
                 continue
@@ -85,15 +89,13 @@ def write_srt(segments: List[SrtSegment], output_path: Path) -> None:
         lines.append(str(i))
         lines.append(f"{seg.start_time} --> {seg.end_time}")
         lines.append(seg.text)
-        lines.append('')  # Empty line between segments
+        lines.append("")  # Empty line between segments
 
-    output_path.write_text('\n'.join(lines), encoding='utf-8')
+    output_path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def merge_srt_segments(
-    srt_path: Path,
-    max_duration_sec: float = 30.0,
-    sentence_endings: str = '.!?'
+    srt_path: Path, max_duration_sec: float = 30.0, sentence_endings: str = ".!?"
 ) -> Path:
     """
     Merge consecutive SRT segments into consolidated blocks.
@@ -136,7 +138,7 @@ def merge_srt_segments(
                 index=current.index,
                 start_time=current.start_time,
                 end_time=next_seg.end_time,
-                text=current.text.rstrip() + ' ' + next_seg.text.lstrip()
+                text=current.text.rstrip() + " " + next_seg.text.lstrip(),
             )
 
     # Don't forget the last segment

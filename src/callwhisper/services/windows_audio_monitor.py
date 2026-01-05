@@ -34,14 +34,16 @@ logger = get_logger(__name__)
 
 class AudioSessionState(IntEnum):
     """Windows audio session states from audiosessiontypes.h."""
-    INACTIVE = 0      # AudioSessionStateInactive - session idle
-    ACTIVE = 1        # AudioSessionStateActive - session playing audio
-    EXPIRED = 2       # AudioSessionStateExpired - session disconnected
+
+    INACTIVE = 0  # AudioSessionStateInactive - session idle
+    ACTIVE = 1  # AudioSessionStateActive - session playing audio
+    EXPIRED = 2  # AudioSessionStateExpired - session disconnected
 
 
 @dataclass
 class AudioSessionEvent:
     """Event fired when an audio session changes state."""
+
     process_name: str
     process_id: int
     state: AudioSessionState
@@ -49,7 +51,9 @@ class AudioSessionEvent:
     timestamp: float = field(default_factory=time.time)
 
     def __str__(self) -> str:
-        return f"AudioSession({self.process_name}[{self.process_id}]: {self.state.name})"
+        return (
+            f"AudioSession({self.process_name}[{self.process_id}]: {self.state.name})"
+        )
 
 
 class WindowsAudioSessionMonitor:
@@ -66,11 +70,7 @@ class WindowsAudioSessionMonitor:
     - Fire callbacks on state transitions
     """
 
-    def __init__(
-        self,
-        target_processes: List[str],
-        poll_interval: float = 0.5
-    ):
+    def __init__(self, target_processes: List[str], poll_interval: float = 0.5):
         """
         Initialize the audio session monitor.
 
@@ -91,7 +91,7 @@ class WindowsAudioSessionMonitor:
         logger.info(
             "audio_monitor_initialized",
             targets=self._targets,
-            poll_interval=poll_interval
+            poll_interval=poll_interval,
         )
 
     def add_callback(self, callback: Callable[[AudioSessionEvent], None]) -> None:
@@ -112,9 +112,7 @@ class WindowsAudioSessionMonitor:
 
         self._running = True
         self._thread = threading.Thread(
-            target=self._poll_loop,
-            name="AudioSessionMonitor",
-            daemon=True
+            target=self._poll_loop, name="AudioSessionMonitor", daemon=True
         )
         self._thread.start()
         logger.info("audio_monitor_started")
@@ -135,12 +133,14 @@ class WindowsAudioSessionMonitor:
 
         for session_info in sessions:
             if session_info["state"] == AudioSessionState.ACTIVE:
-                active.append(AudioSessionEvent(
-                    process_name=session_info["process_name"],
-                    process_id=session_info["process_id"],
-                    state=AudioSessionState.ACTIVE,
-                    session_id=session_info["session_id"]
-                ))
+                active.append(
+                    AudioSessionEvent(
+                        process_name=session_info["process_name"],
+                        process_id=session_info["process_id"],
+                        state=AudioSessionState.ACTIVE,
+                        session_id=session_info["session_id"],
+                    )
+                )
 
         return active
 
@@ -181,32 +181,40 @@ class WindowsAudioSessionMonitor:
 
                 if old_state is None:
                     # New session
-                    self._fire_event(AudioSessionEvent(
-                        process_name=info["process_name"],
-                        process_id=info["process_id"],
-                        state=state,
-                        session_id=info["session_id"]
-                    ))
+                    self._fire_event(
+                        AudioSessionEvent(
+                            process_name=info["process_name"],
+                            process_id=info["process_id"],
+                            state=state,
+                            session_id=info["session_id"],
+                        )
+                    )
                 elif old_state != state:
                     # State changed
-                    self._fire_event(AudioSessionEvent(
-                        process_name=info["process_name"],
-                        process_id=info["process_id"],
-                        state=state,
-                        session_id=info["session_id"]
-                    ))
+                    self._fire_event(
+                        AudioSessionEvent(
+                            process_name=info["process_name"],
+                            process_id=info["process_id"],
+                            state=state,
+                            session_id=info["session_id"],
+                        )
+                    )
 
             # Check for expired sessions
-            expired_keys = set(self._known_sessions.keys()) - set(current_sessions.keys())
+            expired_keys = set(self._known_sessions.keys()) - set(
+                current_sessions.keys()
+            )
             for key in expired_keys:
                 pid, session_id = key
                 # Fire expired event
-                self._fire_event(AudioSessionEvent(
-                    process_name="unknown",  # Process may have exited
-                    process_id=pid,
-                    state=AudioSessionState.EXPIRED,
-                    session_id=session_id
-                ))
+                self._fire_event(
+                    AudioSessionEvent(
+                        process_name="unknown",  # Process may have exited
+                        process_id=pid,
+                        state=AudioSessionState.EXPIRED,
+                        session_id=session_id,
+                    )
+                )
 
             # Update known sessions
             self._known_sessions = {k: v[0] for k, v in current_sessions.items()}
@@ -250,12 +258,14 @@ class WindowsAudioSessionMonitor:
                 except Exception:
                     session_id = f"session_{process_id}"
 
-                sessions.append({
-                    "process_name": process_name,
-                    "process_id": process_id,
-                    "state": state,
-                    "session_id": session_id
-                })
+                sessions.append(
+                    {
+                        "process_name": process_name,
+                        "process_id": process_id,
+                        "state": state,
+                        "session_id": session_id,
+                    }
+                )
 
         except Exception as e:
             logger.error("enumerate_sessions_error", error=str(e))
@@ -268,7 +278,7 @@ class WindowsAudioSessionMonitor:
             "audio_session_event",
             process=event.process_name,
             pid=event.process_id,
-            state=event.state.name
+            state=event.state.name,
         )
 
         for callback in self._callbacks:
@@ -278,7 +288,11 @@ class WindowsAudioSessionMonitor:
                 logger.error(
                     "callback_error",
                     error=str(e),
-                    callback=callback.__name__ if hasattr(callback, "__name__") else str(callback)
+                    callback=(
+                        callback.__name__
+                        if hasattr(callback, "__name__")
+                        else str(callback)
+                    ),
                 )
 
     @property

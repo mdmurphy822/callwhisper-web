@@ -8,6 +8,7 @@ Exports transcripts in multiple formats:
 - PDF (formatted document)
 - DOCX (Word document)
 """
+
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from datetime import datetime
@@ -50,23 +51,23 @@ class TranscriptExporter:
                 # Parse timecode line: "00:00:00,000 --> 00:00:05,000"
                 timecode = lines[1]
                 match = re.match(
-                    r"(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})",
-                    timecode
+                    r"(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})", timecode
                 )
                 if match:
-                    entries.append({
-                        "index": int(lines[0]),
-                        "start": match.group(1),
-                        "end": match.group(2),
-                        "text": "\n".join(lines[2:])
-                    })
+                    entries.append(
+                        {
+                            "index": int(lines[0]),
+                            "start": match.group(1),
+                            "end": match.group(2),
+                            "text": "\n".join(lines[2:]),
+                        }
+                    )
         return entries
 
     def _get_metadata(self, recording_id: str) -> Dict[str, Any]:
         """Get recording metadata from app state."""
         recording = next(
-            (r for r in app_state.completed_recordings if r.id == recording_id),
-            None
+            (r for r in app_state.completed_recordings if r.id == recording_id), None
         )
         if recording:
             return {
@@ -107,19 +108,16 @@ class TranscriptExporter:
                 "text": text,
                 "word_count": len(text.split()) if text else 0,
                 "segments": segments,
-            }
+            },
         }
 
         output_path = self.output_folder / f"{recording_id}_transcript.json"
         output_path.write_text(
-            json.dumps(export_data, indent=2, ensure_ascii=False),
-            encoding="utf-8"
+            json.dumps(export_data, indent=2, ensure_ascii=False), encoding="utf-8"
         )
 
         logger.info(
-            "export_json_created",
-            recording_id=recording_id,
-            path=str(output_path)
+            "export_json_created", recording_id=recording_id, path=str(output_path)
         )
         return output_path
 
@@ -151,7 +149,7 @@ class TranscriptExporter:
             "export_vtt_created",
             recording_id=recording_id,
             path=str(output_path),
-            segments=len(entries)
+            segments=len(entries),
         )
         return output_path
 
@@ -168,18 +166,20 @@ class TranscriptExporter:
             writer = csv.writer(f)
             writer.writerow(["index", "start_time", "end_time", "text"])
             for entry in entries:
-                writer.writerow([
-                    entry["index"],
-                    entry["start"],
-                    entry["end"],
-                    entry["text"].replace("\n", " ")
-                ])
+                writer.writerow(
+                    [
+                        entry["index"],
+                        entry["start"],
+                        entry["end"],
+                        entry["text"].replace("\n", " "),
+                    ]
+                )
 
         logger.info(
             "export_csv_created",
             recording_id=recording_id,
             path=str(output_path),
-            rows=len(entries)
+            rows=len(entries),
         )
         return output_path
 
@@ -205,29 +205,22 @@ class TranscriptExporter:
             rightMargin=72,
             leftMargin=72,
             topMargin=72,
-            bottomMargin=72
+            bottomMargin=72,
         )
 
         styles = getSampleStyleSheet()
         title_style = ParagraphStyle(
-            'Title',
-            parent=styles['Heading1'],
-            fontSize=18,
-            spaceAfter=12
+            "Title", parent=styles["Heading1"], fontSize=18, spaceAfter=12
         )
         meta_style = ParagraphStyle(
-            'Meta',
-            parent=styles['Normal'],
+            "Meta",
+            parent=styles["Normal"],
             fontSize=10,
-            textColor='#666666',
-            spaceAfter=6
+            textColor="#666666",
+            spaceAfter=6,
         )
         body_style = ParagraphStyle(
-            'Body',
-            parent=styles['Normal'],
-            fontSize=11,
-            leading=16,
-            spaceAfter=12
+            "Body", parent=styles["Normal"], fontSize=11, leading=16, spaceAfter=12
         )
 
         story = []
@@ -237,17 +230,18 @@ class TranscriptExporter:
         story.append(Spacer(1, 0.2 * inch))
 
         # Metadata
-        story.append(Paragraph(
-            f"Recording ID: {metadata.get('recording_id', 'N/A')}",
-            meta_style
-        ))
-        if metadata.get('ticket_id'):
+        story.append(
+            Paragraph(
+                f"Recording ID: {metadata.get('recording_id', 'N/A')}", meta_style
+            )
+        )
+        if metadata.get("ticket_id"):
             story.append(Paragraph(f"Ticket: {metadata['ticket_id']}", meta_style))
-        if metadata.get('created_at'):
+        if metadata.get("created_at"):
             story.append(Paragraph(f"Date: {metadata['created_at']}", meta_style))
-        if metadata.get('duration_seconds'):
-            mins = int(metadata['duration_seconds'] // 60)
-            secs = int(metadata['duration_seconds'] % 60)
+        if metadata.get("duration_seconds"):
+            mins = int(metadata["duration_seconds"] // 60)
+            secs = int(metadata["duration_seconds"] % 60)
             story.append(Paragraph(f"Duration: {mins}:{secs:02d}", meta_style))
 
         story.append(Spacer(1, 0.3 * inch))
@@ -256,18 +250,15 @@ class TranscriptExporter:
         for para in text.split("\n\n"):
             if para.strip():
                 # Escape special characters for reportlab
-                safe_para = (para
-                    .replace("&", "&amp;")
-                    .replace("<", "&lt;")
-                    .replace(">", "&gt;"))
+                safe_para = (
+                    para.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                )
                 story.append(Paragraph(safe_para, body_style))
 
         doc.build(story)
 
         logger.info(
-            "export_pdf_created",
-            recording_id=recording_id,
-            path=str(output_path)
+            "export_pdf_created", recording_id=recording_id, path=str(output_path)
         )
         return output_path
 
@@ -292,21 +283,21 @@ class TranscriptExporter:
 
         # Metadata table
         table = doc.add_table(rows=0, cols=2)
-        table.style = 'Table Grid'
+        table.style = "Table Grid"
 
         def add_meta_row(label: str, value: str):
             row = table.add_row()
             row.cells[0].text = label
             row.cells[1].text = value
 
-        add_meta_row("Recording ID", metadata.get('recording_id', 'N/A'))
-        if metadata.get('ticket_id'):
-            add_meta_row("Ticket", metadata['ticket_id'])
-        if metadata.get('created_at'):
-            add_meta_row("Date", metadata['created_at'])
-        if metadata.get('duration_seconds'):
-            mins = int(metadata['duration_seconds'] // 60)
-            secs = int(metadata['duration_seconds'] % 60)
+        add_meta_row("Recording ID", metadata.get("recording_id", "N/A"))
+        if metadata.get("ticket_id"):
+            add_meta_row("Ticket", metadata["ticket_id"])
+        if metadata.get("created_at"):
+            add_meta_row("Date", metadata["created_at"])
+        if metadata.get("duration_seconds"):
+            mins = int(metadata["duration_seconds"] // 60)
+            secs = int(metadata["duration_seconds"] % 60)
             add_meta_row("Duration", f"{mins}:{secs:02d}")
 
         doc.add_paragraph()  # Spacer
@@ -324,9 +315,7 @@ class TranscriptExporter:
         doc.save(str(output_path))
 
         logger.info(
-            "export_docx_created",
-            recording_id=recording_id,
-            path=str(output_path)
+            "export_docx_created", recording_id=recording_id, path=str(output_path)
         )
         return output_path
 

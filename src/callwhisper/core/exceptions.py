@@ -17,7 +17,7 @@ class CallWhisperError(Exception):
         self,
         message: str,
         details: Optional[Dict[str, Any]] = None,
-        cause: Optional[Exception] = None
+        cause: Optional[Exception] = None,
     ):
         super().__init__(message)
         self.message = message
@@ -36,6 +36,7 @@ class CallWhisperError(Exception):
 # Device-related exceptions
 class DeviceError(CallWhisperError):
     """Base exception for device-related errors."""
+
     pass
 
 
@@ -47,8 +48,8 @@ class DeviceNotFoundError(DeviceError):
             f"Device not found: '{device_name}'",
             details={
                 "requested_device": device_name,
-                "available_devices": available_devices or []
-            }
+                "available_devices": available_devices or [],
+            },
         )
 
 
@@ -61,35 +62,40 @@ class DeviceBlockedError(DeviceError):
             details={
                 "device_name": device_name,
                 "reason": reason,
-                "match_type": match_type
-            }
+                "match_type": match_type,
+            },
         )
 
 
 class DeviceEnumerationError(DeviceError):
     """Raised when device enumeration fails."""
+
     pass
 
 
 # Recording-related exceptions
 class RecordingError(CallWhisperError):
     """Base exception for recording-related errors."""
+
     pass
 
 
 class RecordingStartError(RecordingError):
     """Raised when recording fails to start."""
 
-    def __init__(self, device_name: str, reason: str, cause: Optional[Exception] = None):
+    def __init__(
+        self, device_name: str, reason: str, cause: Optional[Exception] = None
+    ):
         super().__init__(
             f"Failed to start recording on '{device_name}': {reason}",
             details={"device_name": device_name, "reason": reason},
-            cause=cause
+            cause=cause,
         )
 
 
 class RecordingStopError(RecordingError):
     """Raised when recording fails to stop gracefully."""
+
     pass
 
 
@@ -99,13 +105,14 @@ class RecordingInProgressError(RecordingError):
     def __init__(self, current_session_id: str):
         super().__init__(
             "Recording already in progress",
-            details={"current_session_id": current_session_id}
+            details={"current_session_id": current_session_id},
         )
 
 
 # Transcription-related exceptions
 class TranscriptionError(CallWhisperError):
     """Base exception for transcription-related errors."""
+
     pass
 
 
@@ -118,21 +125,23 @@ class TranscriptionModelNotFoundError(TranscriptionError):
             details={
                 "model_path": model_path,
                 "models_dir": models_dir,
-                "suggestion": "Place a whisper model (e.g., ggml-medium.en.bin) in the models/ directory"
-            }
+                "suggestion": "Place a whisper model (e.g., ggml-medium.en.bin) in the models/ directory",
+            },
         )
 
 
 class TranscriptionProcessError(TranscriptionError):
     """Raised when the transcription process fails."""
 
-    def __init__(self, reason: str, exit_code: Optional[int] = None, stderr: Optional[str] = None):
+    def __init__(
+        self, reason: str, exit_code: Optional[int] = None, stderr: Optional[str] = None
+    ):
         super().__init__(
             f"Transcription failed: {reason}",
             details={
                 "exit_code": exit_code,
-                "stderr": stderr[:500] if stderr else None  # Truncate long stderr
-            }
+                "stderr": stderr[:500] if stderr else None,  # Truncate long stderr
+            },
         )
 
 
@@ -144,24 +153,27 @@ class TranscriptionTimeoutError(TranscriptionError):
             f"Transcription timed out after {timeout_seconds}s",
             details={
                 "timeout_seconds": timeout_seconds,
-                "audio_duration": audio_duration
-            }
+                "audio_duration": audio_duration,
+            },
         )
 
 
 # Bundle-related exceptions
 class BundleError(CallWhisperError):
     """Base exception for bundle-related errors."""
+
     pass
 
 
 class BundleCreationError(BundleError):
     """Raised when bundle creation fails."""
+
     pass
 
 
 class BundleExtractionError(BundleError):
     """Raised when bundle extraction fails."""
+
     pass
 
 
@@ -173,14 +185,15 @@ class BundleValidationError(BundleError):
             f"Bundle validation failed: '{bundle_path}'",
             details={
                 "bundle_path": bundle_path,
-                "failed_files": [f for f, valid in failed_files.items() if not valid]
-            }
+                "failed_files": [f for f, valid in failed_files.items() if not valid],
+            },
         )
 
 
 # State-related exceptions
 class StateError(CallWhisperError):
     """Base exception for state-related errors."""
+
     pass
 
 
@@ -193,19 +206,21 @@ class InvalidStateTransitionError(StateError):
             details={
                 "from_state": from_state,
                 "to_state": to_state,
-                "valid_transitions": valid_transitions
-            }
+                "valid_transitions": valid_transitions,
+            },
         )
 
 
 class StateRecoveryError(StateError):
     """Raised when state recovery fails."""
+
     pass
 
 
 # Process-related exceptions
 class ProcessError(CallWhisperError):
     """Base exception for subprocess-related errors."""
+
     pass
 
 
@@ -218,7 +233,7 @@ class ProcessTimeoutError(ProcessError):
         process_name: Optional[str] = None,
         timeout_seconds: Optional[float] = None,
         task_type: Optional[str] = None,
-        correlation_id: Optional[str] = None
+        correlation_id: Optional[str] = None,
     ):
         details = {}
         if process_name:
@@ -242,22 +257,24 @@ class ProcessNotFoundError(ProcessError):
             details={
                 "executable_name": executable_name,
                 "expected_path": expected_path,
-                "suggestion": f"Place {executable_name} in the vendor/ directory"
-            }
+                "suggestion": f"Place {executable_name} in the vendor/ directory",
+            },
         )
 
 
 class CircuitOpenError(ProcessError):
     """Raised when circuit breaker is open and requests are rejected."""
 
-    def __init__(self, handler_name: str, failure_count: int, cooldown_remaining: float):
+    def __init__(
+        self, handler_name: str, failure_count: int, cooldown_remaining: float
+    ):
         super().__init__(
             f"Circuit breaker open for '{handler_name}'",
             details={
                 "handler_name": handler_name,
                 "failure_count": failure_count,
-                "cooldown_remaining_seconds": cooldown_remaining
-            }
+                "cooldown_remaining_seconds": cooldown_remaining,
+            },
         )
 
 
@@ -265,21 +282,14 @@ class AllHandlersFailedError(ProcessError):
     """Raised when all handlers in a fallback chain fail."""
 
     def __init__(
-        self,
-        task_type: str,
-        attempts: list,
-        correlation_id: Optional[str] = None
+        self, task_type: str, attempts: list, correlation_id: Optional[str] = None
     ):
-        details = {
-            "task_type": task_type,
-            "attempts": attempts
-        }
+        details = {"task_type": task_type, "attempts": attempts}
         if correlation_id:
             details["correlation_id"] = correlation_id
 
         super().__init__(
-            f"All handlers failed for task type '{task_type}'",
-            details=details
+            f"All handlers failed for task type '{task_type}'", details=details
         )
 
 
@@ -291,7 +301,7 @@ class AudioDurationError(CallWhisperError):
         super().__init__(
             f"Could not determine audio duration for: '{audio_path}'",
             details={"audio_path": audio_path},
-            cause=cause
+            cause=cause,
         )
 
 
@@ -303,7 +313,7 @@ class MetricsPersistenceError(CallWhisperError):
         super().__init__(
             f"Metrics {operation} failed: '{path}'",
             details={"operation": operation, "path": path},
-            cause=cause
+            cause=cause,
         )
 
 
@@ -312,9 +322,7 @@ class CheckpointCorruptedError(CallWhisperError):
 
     def __init__(self, path: str, cause: Optional[Exception] = None):
         super().__init__(
-            f"Corrupted checkpoint file: '{path}'",
-            details={"path": path},
-            cause=cause
+            f"Corrupted checkpoint file: '{path}'", details={"path": path}, cause=cause
         )
 
 
@@ -325,5 +333,5 @@ class PathTraversalError(CallWhisperError):
     def __init__(self, value: str, reason: str):
         super().__init__(
             f"Path traversal detected: {reason}",
-            details={"value": value, "reason": reason}
+            details={"value": value, "reason": reason},
         )

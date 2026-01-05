@@ -68,10 +68,14 @@ async def normalize_audio(
     cmd = [
         str(ffmpeg_path),
         "-y",  # Overwrite output
-        "-i", str(input_path),  # Input file
-        "-ar", str(sample_rate),  # Sample rate
-        "-ac", str(channels),  # Mono
-        "-acodec", "pcm_s16le",  # PCM 16-bit
+        "-i",
+        str(input_path),  # Input file
+        "-ar",
+        str(sample_rate),  # Sample rate
+        "-ac",
+        str(channels),  # Mono
+        "-acodec",
+        "pcm_s16le",  # PCM 16-bit
         str(output_path),
     ]
 
@@ -81,35 +85,33 @@ async def normalize_audio(
             input=str(input_path),
             output=str(output_path),
             sample_rate=sample_rate,
-            channels=channels
+            channels=channels,
         )
 
         process = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
         )
 
         # Apply timeout to normalization
         try:
             stdout, stderr = await asyncio.wait_for(
-                process.communicate(),
-                timeout=NORMALIZATION_TIMEOUT_SECONDS
+                process.communicate(), timeout=NORMALIZATION_TIMEOUT_SECONDS
             )
         except asyncio.TimeoutError:
             process.kill()
             await process.wait()
             logger.error(
-                "normalization_timeout",
-                timeout_seconds=NORMALIZATION_TIMEOUT_SECONDS
+                "normalization_timeout", timeout_seconds=NORMALIZATION_TIMEOUT_SECONDS
             )
             raise ProcessTimeoutError(
                 f"Audio normalization timed out after {NORMALIZATION_TIMEOUT_SECONDS} seconds"
             )
 
         if process.returncode != 0:
-            error_msg = stderr.decode('utf-8', errors='replace')
+            error_msg = stderr.decode("utf-8", errors="replace")
             logger.error("ffmpeg_normalization_failed", error=error_msg)
             raise RuntimeError(f"FFmpeg normalization failed: {error_msg}")
 
@@ -157,11 +159,16 @@ async def convert_to_opus(
     cmd = [
         str(ffmpeg_path),
         "-y",
-        "-i", str(input_path),
-        "-c:a", "libopus",
-        "-b:a", bitrate,
-        "-ar", "48000",  # Opus preferred sample rate
-        "-ac", "1",  # Mono
+        "-i",
+        str(input_path),
+        "-c:a",
+        "libopus",
+        "-b:a",
+        bitrate,
+        "-ar",
+        "48000",  # Opus preferred sample rate
+        "-ac",
+        "1",  # Mono
         str(output_path),
     ]
 
@@ -170,35 +177,33 @@ async def convert_to_opus(
             "starting_opus_conversion",
             input=str(input_path),
             output=str(output_path),
-            bitrate=bitrate
+            bitrate=bitrate,
         )
 
         process = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
         )
 
         # Apply timeout to conversion
         try:
             stdout, stderr = await asyncio.wait_for(
-                process.communicate(),
-                timeout=CONVERSION_TIMEOUT_SECONDS
+                process.communicate(), timeout=CONVERSION_TIMEOUT_SECONDS
             )
         except asyncio.TimeoutError:
             process.kill()
             await process.wait()
             logger.error(
-                "opus_conversion_timeout",
-                timeout_seconds=CONVERSION_TIMEOUT_SECONDS
+                "opus_conversion_timeout", timeout_seconds=CONVERSION_TIMEOUT_SECONDS
             )
             raise ProcessTimeoutError(
                 f"Opus conversion timed out after {CONVERSION_TIMEOUT_SECONDS} seconds"
             )
 
         if process.returncode != 0:
-            error_msg = stderr.decode('utf-8', errors='replace')
+            error_msg = stderr.decode("utf-8", errors="replace")
             logger.error("opus_conversion_failed", error=error_msg)
             raise RuntimeError(f"Opus conversion failed: {error_msg}")
 
@@ -224,14 +229,16 @@ def get_audio_duration(file_path: Path) -> float:
     """
     import wave
 
-    if file_path.suffix.lower() == '.wav':
+    if file_path.suffix.lower() == ".wav":
         try:
-            with wave.open(str(file_path), 'rb') as wav:
+            with wave.open(str(file_path), "rb") as wav:
                 frames = wav.getnframes()
                 rate = wav.getframerate()
                 return frames / rate
         except Exception as e:
-            logger.warning("wav_duration_read_failed", file=str(file_path), error=str(e))
+            logger.warning(
+                "wav_duration_read_failed", file=str(file_path), error=str(e)
+            )
 
     # Fallback: use ffprobe if available
     return 0.0

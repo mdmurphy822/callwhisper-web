@@ -13,6 +13,7 @@ logger = get_logger(__name__)
 
 class AppState(str, Enum):
     """Application states."""
+
     IDLE = "idle"
     RECORDING = "recording"
     PROCESSING = "processing"
@@ -23,6 +24,7 @@ class AppState(str, Enum):
 @dataclass
 class RecordingSession:
     """Active recording session data."""
+
     id: str
     device_name: str
     ticket_id: Optional[str] = None
@@ -35,6 +37,7 @@ class RecordingSession:
 @dataclass
 class CompletedRecording:
     """Completed recording metadata."""
+
     id: str
     ticket_id: Optional[str]
     created_at: datetime
@@ -83,8 +86,12 @@ class ApplicationState:
             except Exception as e:
                 logger.error(
                     "state_callback_error",
-                    callback=callback.__name__ if hasattr(callback, '__name__') else str(callback),
-                    error=str(e)
+                    callback=(
+                        callback.__name__
+                        if hasattr(callback, "__name__")
+                        else str(callback)
+                    ),
+                    error=str(e),
                 )
 
     async def start_recording(self, session: RecordingSession):
@@ -97,11 +104,13 @@ class ApplicationState:
         # Start timer
         self._timer_task = asyncio.create_task(self._run_timer())
 
-        await self._notify_state_change({
-            "type": "state_change",
-            "state": self.state.value,
-            "recording_id": session.id,
-        })
+        await self._notify_state_change(
+            {
+                "type": "state_change",
+                "state": self.state.value,
+                "recording_id": session.id,
+            }
+        )
 
     async def _run_timer(self):
         """Run the recording timer."""
@@ -109,11 +118,13 @@ class ApplicationState:
             while self.state == AppState.RECORDING:
                 await asyncio.sleep(1)
                 self.elapsed_seconds += 1
-                await self._notify_state_change({
-                    "type": "timer",
-                    "elapsed_seconds": self.elapsed_seconds,
-                    "formatted": f"{self.elapsed_seconds // 60:02d}:{self.elapsed_seconds % 60:02d}",
-                })
+                await self._notify_state_change(
+                    {
+                        "type": "timer",
+                        "elapsed_seconds": self.elapsed_seconds,
+                        "formatted": f"{self.elapsed_seconds // 60:02d}:{self.elapsed_seconds % 60:02d}",
+                    }
+                )
         except asyncio.CancelledError:
             pass
 
@@ -126,19 +137,25 @@ class ApplicationState:
 
         self.state = AppState.PROCESSING
 
-        await self._notify_state_change({
-            "type": "state_change",
-            "state": self.state.value,
-            "recording_id": self.current_session.id if self.current_session else None,
-        })
+        await self._notify_state_change(
+            {
+                "type": "state_change",
+                "state": self.state.value,
+                "recording_id": (
+                    self.current_session.id if self.current_session else None
+                ),
+            }
+        )
 
     async def processing_progress(self, percent: int, stage: str):
         """Report processing progress."""
-        await self._notify_state_change({
-            "type": "processing_progress",
-            "percent": percent,
-            "stage": stage,
-        })
+        await self._notify_state_change(
+            {
+                "type": "processing_progress",
+                "percent": percent,
+                "stage": stage,
+            }
+        )
 
     async def partial_transcript(self, text: str, is_final: bool = False):
         """
@@ -150,11 +167,13 @@ class ApplicationState:
             text: The partial transcript text so far
             is_final: True when transcription is complete
         """
-        await self._notify_state_change({
-            "type": "partial_transcript",
-            "text": text,
-            "is_final": is_final,
-        })
+        await self._notify_state_change(
+            {
+                "type": "partial_transcript",
+                "text": text,
+                "is_final": is_final,
+            }
+        )
 
     async def complete_recording(self, recording: CompletedRecording):
         """Transition to done state."""
@@ -162,13 +181,15 @@ class ApplicationState:
         self.completed_recordings.insert(0, recording)
         self.current_session = None
 
-        await self._notify_state_change({
-            "type": "recording_complete",
-            "state": self.state.value,
-            "recording_id": recording.id,
-            "output_folder": recording.output_folder,
-            "bundle_path": recording.bundle_path,
-        })
+        await self._notify_state_change(
+            {
+                "type": "recording_complete",
+                "state": self.state.value,
+                "recording_id": recording.id,
+                "output_folder": recording.output_folder,
+                "bundle_path": recording.bundle_path,
+            }
+        )
 
     async def set_error(self, error: str):
         """Transition to error state."""
@@ -179,11 +200,13 @@ class ApplicationState:
         if self.current_session:
             self.current_session.error = error
 
-        await self._notify_state_change({
-            "type": "error",
-            "state": self.state.value,
-            "message": error,
-        })
+        await self._notify_state_change(
+            {
+                "type": "error",
+                "state": self.state.value,
+                "message": error,
+            }
+        )
 
     async def reset(self):
         """Reset to idle state."""
@@ -191,10 +214,12 @@ class ApplicationState:
         self.current_session = None
         self.elapsed_seconds = 0
 
-        await self._notify_state_change({
-            "type": "state_change",
-            "state": self.state.value,
-        })
+        await self._notify_state_change(
+            {
+                "type": "state_change",
+                "state": self.state.value,
+            }
+        )
 
     def get_state_info(self) -> Dict[str, Any]:
         """Get current state information."""

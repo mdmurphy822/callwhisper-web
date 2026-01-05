@@ -28,6 +28,7 @@ class DegradationLevel(str, Enum):
     - BALANCED: Some enhancements disabled for performance
     - FAST: Minimal processing for maximum throughput
     """
+
     FULL = "full"
     BALANCED = "balanced"
     FAST = "fast"
@@ -36,22 +37,24 @@ class DegradationLevel(str, Enum):
 @dataclass
 class DegradationConfig:
     """Configuration for degradation thresholds."""
+
     # Queue depth thresholds
-    balanced_threshold: int = 5   # Switch to BALANCED when queue > this
-    fast_threshold: int = 15      # Switch to FAST when queue > this
+    balanced_threshold: int = 5  # Switch to BALANCED when queue > this
+    fast_threshold: int = 15  # Switch to FAST when queue > this
 
     # Latency thresholds (ms)
-    balanced_latency_ms: float = 5000.0   # Switch to BALANCED when p95 > this
-    fast_latency_ms: float = 15000.0      # Switch to FAST when p95 > this
+    balanced_latency_ms: float = 5000.0  # Switch to BALANCED when p95 > this
+    fast_latency_ms: float = 15000.0  # Switch to FAST when p95 > this
 
     # Hysteresis - prevents rapid oscillation
     hysteresis_window_seconds: float = 30.0  # Consider last N seconds
-    level_change_cooldown: float = 10.0      # Minimum seconds between level changes
+    level_change_cooldown: float = 10.0  # Minimum seconds between level changes
 
 
 @dataclass
 class LoadMetrics:
     """Real-time load metrics for degradation decisions."""
+
     queue_depth: int = 0
     recent_latencies_ms: deque = field(default_factory=lambda: deque(maxlen=100))
     error_count: int = 0
@@ -152,7 +155,7 @@ class DegradationManager:
                 old_level=old_level.value,
                 new_level=new_level.value,
                 queue_depth=self._metrics.queue_depth,
-                p95_latency_ms=round(self._metrics.p95_latency_ms, 2)
+                p95_latency_ms=round(self._metrics.p95_latency_ms, 2),
             )
 
             # Notify listeners
@@ -168,13 +171,17 @@ class DegradationManager:
         p95_latency = self._metrics.p95_latency_ms
 
         # Check FAST thresholds (highest load)
-        if (queue_depth > self.config.fast_threshold or
-            p95_latency > self.config.fast_latency_ms):
+        if (
+            queue_depth > self.config.fast_threshold
+            or p95_latency > self.config.fast_latency_ms
+        ):
             return DegradationLevel.FAST
 
         # Check BALANCED thresholds (moderate load)
-        if (queue_depth > self.config.balanced_threshold or
-            p95_latency > self.config.balanced_latency_ms):
+        if (
+            queue_depth > self.config.balanced_threshold
+            or p95_latency > self.config.balanced_latency_ms
+        ):
             return DegradationLevel.BALANCED
 
         # Default to FULL quality
@@ -185,7 +192,9 @@ class DegradationManager:
         with self._lock:
             return self._current_level
 
-    def get_settings_for_level(self, level: Optional[DegradationLevel] = None) -> Dict[str, Any]:
+    def get_settings_for_level(
+        self, level: Optional[DegradationLevel] = None
+    ) -> Dict[str, Any]:
         """
         Get processing settings appropriate for degradation level.
 
@@ -205,7 +214,7 @@ class DegradationManager:
                 "temperature": 0.0,
                 "enable_diarization": True,
                 "enable_noise_reduction": True,
-                "compression_level": "high"
+                "compression_level": "high",
             },
             DegradationLevel.BALANCED: {
                 "model_size": "medium",
@@ -214,7 +223,7 @@ class DegradationManager:
                 "temperature": 0.0,
                 "enable_diarization": True,
                 "enable_noise_reduction": False,
-                "compression_level": "medium"
+                "compression_level": "medium",
             },
             DegradationLevel.FAST: {
                 "model_size": "small",
@@ -223,15 +232,14 @@ class DegradationManager:
                 "temperature": 0.0,
                 "enable_diarization": False,
                 "enable_noise_reduction": False,
-                "compression_level": "low"
-            }
+                "compression_level": "low",
+            },
         }
 
         return settings.get(level, settings[DegradationLevel.FULL])
 
     def add_level_change_listener(
-        self,
-        listener: Callable[[DegradationLevel, DegradationLevel], None]
+        self, listener: Callable[[DegradationLevel, DegradationLevel], None]
     ) -> None:
         """
         Add a listener for degradation level changes.
@@ -243,8 +251,7 @@ class DegradationManager:
             self._listeners.append(listener)
 
     def remove_level_change_listener(
-        self,
-        listener: Callable[[DegradationLevel, DegradationLevel], None]
+        self, listener: Callable[[DegradationLevel, DegradationLevel], None]
     ) -> None:
         """Remove a level change listener."""
         with self._lock:
@@ -266,7 +273,7 @@ class DegradationManager:
             logger.warning(
                 "degradation_level_forced",
                 old_level=old_level.value,
-                new_level=level.value
+                new_level=level.value,
             )
 
     def get_metrics(self) -> Dict[str, Any]:
@@ -285,8 +292,8 @@ class DegradationManager:
                     "balanced_threshold": self.config.balanced_threshold,
                     "fast_threshold": self.config.fast_threshold,
                     "balanced_latency_ms": self.config.balanced_latency_ms,
-                    "fast_latency_ms": self.config.fast_latency_ms
-                }
+                    "fast_latency_ms": self.config.fast_latency_ms,
+                },
             }
 
 

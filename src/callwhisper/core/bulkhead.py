@@ -22,20 +22,22 @@ from .logging_config import get_core_logger
 
 logger = get_core_logger()
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class PoolType(str, Enum):
     """Types of isolated thread pools."""
-    AUDIO = "audio"           # Audio recording/processing
+
+    AUDIO = "audio"  # Audio recording/processing
     TRANSCRIPTION = "transcription"  # Whisper transcription
-    IO = "io"                 # File I/O operations
-    GENERAL = "general"       # General purpose tasks
+    IO = "io"  # File I/O operations
+    GENERAL = "general"  # General purpose tasks
 
 
 @dataclass
 class PoolConfig:
     """Configuration for a thread pool."""
+
     max_workers: int
     thread_name_prefix: str
     queue_size: int = 100  # Max pending tasks before rejection
@@ -44,6 +46,7 @@ class PoolConfig:
 @dataclass
 class PoolMetrics:
     """Metrics for a thread pool."""
+
     active_tasks: int = 0
     completed_tasks: int = 0
     failed_tasks: int = 0
@@ -76,7 +79,9 @@ class BulkheadExecutor:
     # Default pool configurations
     DEFAULT_CONFIGS: Dict[PoolType, PoolConfig] = {
         PoolType.AUDIO: PoolConfig(max_workers=2, thread_name_prefix="audio"),
-        PoolType.TRANSCRIPTION: PoolConfig(max_workers=2, thread_name_prefix="transcribe"),
+        PoolType.TRANSCRIPTION: PoolConfig(
+            max_workers=2, thread_name_prefix="transcribe"
+        ),
         PoolType.IO: PoolConfig(max_workers=4, thread_name_prefix="io"),
         PoolType.GENERAL: PoolConfig(max_workers=4, thread_name_prefix="general"),
     }
@@ -102,14 +107,14 @@ class BulkheadExecutor:
         for pool_type, config in self._configs.items():
             self._pools[pool_type] = ThreadPoolExecutor(
                 max_workers=config.max_workers,
-                thread_name_prefix=config.thread_name_prefix
+                thread_name_prefix=config.thread_name_prefix,
             )
             self._metrics[pool_type] = PoolMetrics()
             self._pending_tasks[pool_type] = 0
 
         logger.info(
             "bulkhead_executor_initialized",
-            pools={pt.value: cfg.max_workers for pt, cfg in self._configs.items()}
+            pools={pt.value: cfg.max_workers for pt, cfg in self._configs.items()},
         )
 
     def _check_queue_limit(self, pool_type: PoolType) -> bool:
@@ -129,10 +134,7 @@ class BulkheadExecutor:
                 metrics.peak_active_tasks = metrics.active_tasks
 
     def _record_task_end(
-        self,
-        pool_type: PoolType,
-        duration_ms: float,
-        success: bool
+        self, pool_type: PoolType, duration_ms: float, success: bool
     ) -> None:
         """Record that a task has completed."""
         with self._lock:
@@ -151,11 +153,7 @@ class BulkheadExecutor:
             self._metrics[pool_type].rejected_tasks += 1
 
     async def run_in_pool(
-        self,
-        pool_type: PoolType,
-        func: Callable[..., T],
-        *args,
-        **kwargs
+        self, pool_type: PoolType, func: Callable[..., T], *args, **kwargs
     ) -> T:
         """
         Run a function in the specified thread pool.
@@ -178,9 +176,7 @@ class BulkheadExecutor:
         if not self._check_queue_limit(pool_type):
             self._record_rejection(pool_type)
             logger.warning(
-                "bulkhead_task_rejected",
-                pool=pool_type.value,
-                reason="queue_full"
+                "bulkhead_task_rejected", pool=pool_type.value, reason="queue_full"
             )
             raise RuntimeError(f"Pool {pool_type.value} queue is full")
 
@@ -192,10 +188,7 @@ class BulkheadExecutor:
 
         try:
             loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(
-                pool,
-                lambda: func(*args, **kwargs)
-            )
+            result = await loop.run_in_executor(pool, lambda: func(*args, **kwargs))
             return result
         except Exception as e:
             success = False
@@ -203,7 +196,7 @@ class BulkheadExecutor:
                 "bulkhead_task_failed",
                 pool=pool_type.value,
                 error=str(e),
-                error_type=type(e).__name__
+                error_type=type(e).__name__,
             )
             raise
         finally:
@@ -214,7 +207,9 @@ class BulkheadExecutor:
         """Convenience method to run in audio pool."""
         return await self.run_in_pool(PoolType.AUDIO, func, *args, **kwargs)
 
-    async def run_transcription_task(self, func: Callable[..., T], *args, **kwargs) -> T:
+    async def run_transcription_task(
+        self, func: Callable[..., T], *args, **kwargs
+    ) -> T:
         """Convenience method to run in transcription pool."""
         return await self.run_in_pool(PoolType.TRANSCRIPTION, func, *args, **kwargs)
 
@@ -238,15 +233,17 @@ class BulkheadExecutor:
                 "rejected_tasks": metrics.rejected_tasks,
                 "avg_execution_time_ms": round(metrics.avg_execution_time_ms, 2),
                 "peak_active_tasks": metrics.peak_active_tasks,
-                "utilization": round(metrics.active_tasks / config.max_workers, 2)
-                    if config.max_workers > 0 else 0.0
+                "utilization": (
+                    round(metrics.active_tasks / config.max_workers, 2)
+                    if config.max_workers > 0
+                    else 0.0
+                ),
             }
 
     def get_all_metrics(self) -> Dict[str, Dict[str, Any]]:
         """Get metrics for all pools."""
         return {
-            pool_type.value: self.get_pool_metrics(pool_type)
-            for pool_type in PoolType
+            pool_type.value: self.get_pool_metrics(pool_type) for pool_type in PoolType
         }
 
     def is_healthy(self) -> bool:
@@ -255,9 +252,9 @@ class BulkheadExecutor:
             metrics = self.get_pool_metrics(pool_type)
             # Consider unhealthy if rejection rate > 10% or utilization > 90%
             total_submitted = (
-                metrics["completed_tasks"] +
-                metrics["failed_tasks"] +
-                metrics["rejected_tasks"]
+                metrics["completed_tasks"]
+                + metrics["failed_tasks"]
+                + metrics["rejected_tasks"]
             )
             if total_submitted > 0:
                 rejection_rate = metrics["rejected_tasks"] / total_submitted
@@ -284,11 +281,7 @@ class BulkheadExecutor:
                 pool.shutdown(wait=wait)
                 logger.debug("pool_shutdown", pool=pool_type.value)
             except Exception as e:
-                logger.error(
-                    "pool_shutdown_error",
-                    pool=pool_type.value,
-                    error=str(e)
-                )
+                logger.error("pool_shutdown_error", pool=pool_type.value, error=str(e))
 
         logger.info("bulkhead_executor_shutdown_complete")
 

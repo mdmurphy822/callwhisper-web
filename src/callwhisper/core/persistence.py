@@ -21,6 +21,7 @@ logger = get_core_logger()
 
 class CheckpointStage(str, Enum):
     """Stages in the recording/transcription workflow."""
+
     STARTED = "started"
     RECORDING = "recording"
     STOPPED = "stopped"
@@ -34,6 +35,7 @@ class CheckpointStage(str, Enum):
 @dataclass
 class Checkpoint:
     """Represents a workflow checkpoint."""
+
     session_id: str
     stage: CheckpointStage
     timestamp: str
@@ -54,13 +56,13 @@ class Checkpoint:
     def to_dict(self) -> Dict:
         """Convert checkpoint to dictionary."""
         data = asdict(self)
-        data['stage'] = self.stage.value
+        data["stage"] = self.stage.value
         return data
 
     @classmethod
     def from_dict(cls, data: Dict) -> "Checkpoint":
         """Create checkpoint from dictionary."""
-        data['stage'] = CheckpointStage(data['stage'])
+        data["stage"] = CheckpointStage(data["stage"])
         return cls(**data)
 
 
@@ -84,17 +86,16 @@ class CheckpointManager:
         """
         self.checkpoint_dir = Path(checkpoint_dir)
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
-        logger.info("checkpoint_manager_initialized", checkpoint_dir=str(self.checkpoint_dir))
+        logger.info(
+            "checkpoint_manager_initialized", checkpoint_dir=str(self.checkpoint_dir)
+        )
 
     def _get_checkpoint_path(self, session_id: str) -> Path:
         """Get path for a session's checkpoint file."""
         return self.checkpoint_dir / f"{session_id}.checkpoint.json"
 
     def save_checkpoint(
-        self,
-        session_id: str,
-        stage: CheckpointStage,
-        **kwargs
+        self, session_id: str, stage: CheckpointStage, **kwargs
     ) -> Checkpoint:
         """
         Save a checkpoint for a session.
@@ -111,17 +112,14 @@ class CheckpointManager:
             session_id=session_id,
             stage=stage,
             timestamp=datetime.now().isoformat(),
-            **kwargs
+            **kwargs,
         )
 
         path = self._get_checkpoint_path(session_id)
         path.write_text(json.dumps(checkpoint.to_dict(), indent=2))
 
         logger.info(
-            "checkpoint_saved",
-            session_id=session_id,
-            stage=stage.value,
-            path=str(path)
+            "checkpoint_saved", session_id=session_id, stage=stage.value, path=str(path)
         )
 
         return checkpoint
@@ -143,17 +141,16 @@ class CheckpointManager:
         try:
             data = json.loads(path.read_text())
             checkpoint = Checkpoint.from_dict(data)
-            logger.debug("checkpoint_loaded", session_id=session_id, stage=checkpoint.stage.value)
+            logger.debug(
+                "checkpoint_loaded", session_id=session_id, stage=checkpoint.stage.value
+            )
             return checkpoint
         except Exception as e:
             logger.error("checkpoint_load_error", session_id=session_id, error=str(e))
             return None
 
     def update_checkpoint(
-        self,
-        session_id: str,
-        stage: CheckpointStage,
-        **kwargs
+        self, session_id: str, stage: CheckpointStage, **kwargs
     ) -> Optional[Checkpoint]:
         """
         Update an existing checkpoint.
@@ -172,8 +169,8 @@ class CheckpointManager:
 
         # Merge existing data with updates
         existing_dict = existing.to_dict()
-        existing_dict['stage'] = stage.value
-        existing_dict['timestamp'] = datetime.now().isoformat()
+        existing_dict["stage"] = stage.value
+        existing_dict["timestamp"] = datetime.now().isoformat()
         for key, value in kwargs.items():
             if value is not None:
                 existing_dict[key] = value
@@ -181,11 +178,7 @@ class CheckpointManager:
         path = self._get_checkpoint_path(session_id)
         path.write_text(json.dumps(existing_dict, indent=2))
 
-        logger.info(
-            "checkpoint_updated",
-            session_id=session_id,
-            stage=stage.value
-        )
+        logger.info("checkpoint_updated", session_id=session_id, stage=stage.value)
 
         return Checkpoint.from_dict(existing_dict)
 
@@ -204,13 +197,16 @@ class CheckpointManager:
                 checkpoint = Checkpoint.from_dict(data)
 
                 # Check if session is incomplete
-                if checkpoint.stage not in [CheckpointStage.COMPLETED, CheckpointStage.FAILED]:
+                if checkpoint.stage not in [
+                    CheckpointStage.COMPLETED,
+                    CheckpointStage.FAILED,
+                ]:
                     incomplete.append(checkpoint)
                     logger.info(
                         "incomplete_session_found",
                         session_id=checkpoint.session_id,
                         stage=checkpoint.stage.value,
-                        timestamp=checkpoint.timestamp
+                        timestamp=checkpoint.timestamp,
                     )
             except Exception as e:
                 logger.error("checkpoint_parse_error", path=str(path), error=str(e))
@@ -234,7 +230,9 @@ class CheckpointManager:
             return True
         return False
 
-    def mark_completed(self, session_id: str, bundle_file: Optional[str] = None) -> Optional[Checkpoint]:
+    def mark_completed(
+        self, session_id: str, bundle_file: Optional[str] = None
+    ) -> Optional[Checkpoint]:
         """
         Mark a session as completed.
 
@@ -246,9 +244,7 @@ class CheckpointManager:
             Updated checkpoint
         """
         return self.update_checkpoint(
-            session_id,
-            CheckpointStage.COMPLETED,
-            bundle_file=bundle_file
+            session_id, CheckpointStage.COMPLETED, bundle_file=bundle_file
         )
 
     def mark_failed(self, session_id: str, error_message: str) -> Optional[Checkpoint]:
@@ -263,9 +259,7 @@ class CheckpointManager:
             Updated checkpoint
         """
         return self.update_checkpoint(
-            session_id,
-            CheckpointStage.FAILED,
-            error_message=error_message
+            session_id, CheckpointStage.FAILED, error_message=error_message
         )
 
     def get_resumable_stage(self, checkpoint: Checkpoint) -> Optional[CheckpointStage]:
@@ -317,12 +311,17 @@ class CheckpointManager:
                 data = json.loads(path.read_text())
                 checkpoint = Checkpoint.from_dict(data)
 
-                if checkpoint.stage in [CheckpointStage.COMPLETED, CheckpointStage.FAILED]:
+                if checkpoint.stage in [
+                    CheckpointStage.COMPLETED,
+                    CheckpointStage.FAILED,
+                ]:
                     checkpoint_time = datetime.fromisoformat(checkpoint.timestamp)
                     if checkpoint_time < cutoff:
                         path.unlink()
                         removed += 1
-                        logger.debug("old_checkpoint_removed", session_id=checkpoint.session_id)
+                        logger.debug(
+                            "old_checkpoint_removed", session_id=checkpoint.session_id
+                        )
 
             except Exception as e:
                 logger.warning("checkpoint_cleanup_error", path=str(path), error=str(e))

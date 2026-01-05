@@ -21,7 +21,9 @@ class ConnectionManager:
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
 
-    async def send_personal_message(self, message: Dict[str, Any], websocket: WebSocket):
+    async def send_personal_message(
+        self, message: Dict[str, Any], websocket: WebSocket
+    ):
         """Send message to a specific client."""
         await websocket.send_json(message)
 

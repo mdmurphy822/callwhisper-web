@@ -33,13 +33,13 @@ SAFE_PATTERNS_WINDOWS = [
 
 # Linux safe device patterns (case-insensitive)
 SAFE_PATTERNS_LINUX = [
-    r"\.monitor$",           # PulseAudio monitor sinks (ends with .monitor)
-    r"monitor$",             # Monitor suffix
-    r"null[-_]?sink",        # Null sink
-    r"loopback",             # Loopback device
-    r"pipewire",             # PipeWire devices
-    r"output.*monitor",      # Output monitors
-    r"alsa_output.*monitor", # ALSA output monitors
+    r"\.monitor$",  # PulseAudio monitor sinks (ends with .monitor)
+    r"monitor$",  # Monitor suffix
+    r"null[-_]?sink",  # Null sink
+    r"loopback",  # Loopback device
+    r"pipewire",  # PipeWire devices
+    r"output.*monitor",  # Output monitors
+    r"alsa_output.*monitor",  # ALSA output monitors
 ]
 
 
@@ -57,12 +57,12 @@ DEFAULT_SAFE_PATTERNS = SAFE_PATTERNS_WINDOWS + SAFE_PATTERNS_LINUX
 # Dangerous device patterns (case-insensitive) - MUST BE BLOCKED
 # Uses negative lookahead to allow "output" variations like "Microphone Output"
 DANGEROUS_PATTERNS = [
-    r"\bmicrophone\b(?!\s*out)",     # "microphone" but NOT "microphone output"
-    r"\bmic\b(?!\s*out)",            # "mic" but NOT "mic out" or "mic output"
-    r"^mic\s(?!out)",                # starts with "mic " but not "mic out"
+    r"\bmicrophone\b(?!\s*out)",  # "microphone" but NOT "microphone output"
+    r"\bmic\b(?!\s*out)",  # "mic" but NOT "mic out" or "mic output"
+    r"^mic\s(?!out)",  # starts with "mic " but not "mic out"
     r"webcam",
     r"\bcamera\b",
-    r"headset\s*mic(?!\s*out)",      # "headset mic" but NOT "headset mic output"
+    r"headset\s*mic(?!\s*out)",  # "headset mic" but NOT "headset mic output"
     r"built-?in\s*(mic|audio\s*input)",
     r"internal\s*mic(?!\s*out)",
     r"array\s*mic(?!\s*out)",
@@ -100,7 +100,7 @@ def is_device_safe(device_name: str, config: DeviceGuardConfig) -> bool:
         blocked_lower = blocked.lower()
         # Use word boundary match to avoid false positives
         # e.g., "microphone" in blocklist should not block "microphone output"
-        pattern = r'\b' + re.escape(blocked_lower) + r'\b(?!\s*out)'
+        pattern = r"\b" + re.escape(blocked_lower) + r"\b(?!\s*out)"
         if re.search(pattern, name_lower, re.IGNORECASE):
             return False
 
@@ -147,7 +147,7 @@ def get_device_status(device_name: str, config: DeviceGuardConfig) -> Dict[str, 
     # Check explicit blocklist with word boundary matching
     for blocked in config.blocklist:
         blocked_lower = blocked.lower()
-        pattern = r'\b' + re.escape(blocked_lower) + r'\b(?!\s*out)'
+        pattern = r"\b" + re.escape(blocked_lower) + r"\b(?!\s*out)"
         if re.search(pattern, name_lower, re.IGNORECASE):
             return {
                 "safe": False,

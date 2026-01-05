@@ -31,12 +31,14 @@ _guard_enabled = False
 _guard_lock = threading.Lock()
 
 # Allowed hosts for localhost connections
-ALLOWED_HOSTS = frozenset([
-    '127.0.0.1',
-    'localhost',
-    '::1',
-    '0.0.0.0',  # Binding address  # nosec B104
-])
+ALLOWED_HOSTS = frozenset(
+    [
+        "127.0.0.1",
+        "localhost",
+        "::1",
+        "0.0.0.0",  # Binding address  # nosec B104
+    ]
+)
 
 # Allowed port range (restrict to reasonable local service ports)
 ALLOWED_PORTS = range(1024, 65536)
@@ -46,7 +48,7 @@ def _guarded_create_connection(
     address: Tuple[str, int],
     timeout: Optional[float] = None,
     source_address: Optional[Tuple[str, int]] = None,
-    **kwargs
+    **kwargs,
 ) -> socket.socket:
     """
     Guarded version of socket.create_connection.
@@ -65,7 +67,7 @@ def _guarded_create_connection(
             "external_connection_blocked",
             host=host,
             port=port,
-            reason="Network guard active - external connections blocked"
+            reason="Network guard active - external connections blocked",
         )
         raise ConnectionRefusedError(
             f"External connections blocked by network guard: {host}:{port}. "
@@ -73,18 +75,11 @@ def _guarded_create_connection(
         )
 
     # Log allowed connection (debug level)
-    logger.debug(
-        "local_connection_allowed",
-        host=host,
-        port=port
-    )
+    logger.debug("local_connection_allowed", host=host, port=port)
 
     # Call original function for localhost connections
     return _original_create_connection(
-        address,
-        timeout=timeout,
-        source_address=source_address,
-        **kwargs
+        address, timeout=timeout, source_address=source_address, **kwargs
     )
 
 
@@ -94,7 +89,7 @@ def _guarded_getaddrinfo(
     family: int = 0,
     type_: int = 0,
     proto: int = 0,
-    flags: int = 0
+    flags: int = 0,
 ) -> List:
     """
     Guarded version of socket.getaddrinfo.
@@ -112,12 +107,12 @@ def _guarded_getaddrinfo(
         "dns_lookup_blocked",
         host=host,
         port=port,
-        reason="Network guard active - DNS lookups for external hosts blocked"
+        reason="Network guard active - DNS lookups for external hosts blocked",
     )
     raise socket.gaierror(
         socket.EAI_NONAME,
         f"DNS lookup blocked by network guard: {host}. "
-        "CallWhisper is configured for offline-only operation."
+        "CallWhisper is configured for offline-only operation.",
     )
 
 
@@ -146,7 +141,7 @@ def enable_network_guard() -> None:
         logger.info(
             "network_guard_enabled",
             allowed_hosts=list(ALLOWED_HOSTS),
-            message="External network connections are now blocked"
+            message="External network connections are now blocked",
         )
 
 
@@ -171,7 +166,7 @@ def disable_network_guard() -> None:
 
         logger.info(
             "network_guard_disabled",
-            message="External network connections are now allowed"
+            message="External network connections are now allowed",
         )
 
 

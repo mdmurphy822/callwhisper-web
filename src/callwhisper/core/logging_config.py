@@ -18,9 +18,7 @@ import structlog
 
 
 def configure_logging(
-    log_dir: Optional[Path] = None,
-    log_level: str = "INFO",
-    json_output: bool = True
+    log_dir: Optional[Path] = None, log_level: str = "INFO", json_output: bool = True
 ) -> None:
     """
     Configure structured logging for the application.
@@ -50,7 +48,7 @@ def configure_logging(
         # JSON output for production/parsing
         final_processors = shared_processors + [
             structlog.processors.format_exc_info,
-            structlog.processors.JSONRenderer()
+            structlog.processors.JSONRenderer(),
         ]
     else:
         # Human-readable output for development
@@ -115,11 +113,7 @@ class LogContext:
         return False
 
 
-def log_operation(
-    logger: structlog.BoundLogger,
-    operation: str,
-    **context
-):
+def log_operation(logger: structlog.BoundLogger, operation: str, **context):
     """
     Decorator/context for logging operation start/end.
 
@@ -127,17 +121,14 @@ def log_operation(
     in their response that default handling was invoked and provide
     metadata about why specialized routing failed."
     """
+
     class OperationLogger:
         def __init__(self):
             self.start_time = None
 
         def __enter__(self):
             self.start_time = datetime.now()
-            logger.info(
-                f"{operation}_started",
-                operation=operation,
-                **context
-            )
+            logger.info(f"{operation}_started", operation=operation, **context)
             return self
 
         def __exit__(self, exc_type, exc_val, exc_tb):
@@ -149,7 +140,7 @@ def log_operation(
                     operation=operation,
                     duration_ms=round(duration_ms, 2),
                     status="success",
-                    **context
+                    **context,
                 )
             else:
                 logger.error(
@@ -159,7 +150,7 @@ def log_operation(
                     status="error",
                     error_type=exc_type.__name__,
                     error_message=str(exc_val),
-                    **context
+                    **context,
                 )
             return False  # Don't suppress exceptions
 

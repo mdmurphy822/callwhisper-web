@@ -31,6 +31,7 @@ logger = get_core_logger()
 # Event types
 class EventType:
     """Standard event types for transcription workflow."""
+
     SESSION_STARTED = "SESSION_STARTED"
     RECORDING_STARTED = "RECORDING_STARTED"
     RECORDING_STOPPED = "RECORDING_STOPPED"
@@ -55,6 +56,7 @@ class TranscriptionEvent:
 
     Once created, events should not be modified.
     """
+
     event_type: str
     timestamp: datetime
     session_id: str
@@ -65,7 +67,9 @@ class TranscriptionEvent:
     def __post_init__(self):
         if not self.event_id:
             # Generate unique event ID
-            content = f"{self.timestamp.isoformat()}-{self.session_id}-{self.event_type}"
+            content = (
+                f"{self.timestamp.isoformat()}-{self.session_id}-{self.event_type}"
+            )
             self.event_id = hashlib.sha256(content.encode()).hexdigest()[:16]
 
     def to_dict(self) -> Dict[str, Any]:
@@ -100,6 +104,7 @@ class TranscriptionEvent:
 @dataclass
 class EventStoreConfig:
     """Configuration for event store."""
+
     log_dir: Path = field(default_factory=lambda: Path("data/events"))
     max_file_size_mb: int = 10  # Rotate after this size
     max_files: int = 100  # Keep this many rotated files
@@ -153,7 +158,7 @@ class EventStore:
         logger.info(
             "event_store_init",
             log_dir=str(self.config.log_dir),
-            hash_chain=self.config.enable_hash_chain
+            hash_chain=self.config.enable_hash_chain,
         )
 
     def _get_current_log_path(self) -> Path:
@@ -200,7 +205,9 @@ class EventStore:
         rotated_path = log_path.with_suffix(f".{timestamp}.jsonl")
         log_path.rename(rotated_path)
 
-        logger.info("event_store_rotate", old_path=str(log_path), new_path=str(rotated_path))
+        logger.info(
+            "event_store_rotate", old_path=str(log_path), new_path=str(rotated_path)
+        )
 
         # Cleanup old files
         self._cleanup_old_files()
@@ -252,7 +259,7 @@ class EventStore:
             "event_appended",
             event_type=event.event_type,
             session_id=event.session_id,
-            event_id=event.event_id
+            event_id=event.event_id,
         )
 
         # Notify listeners
@@ -263,9 +270,7 @@ class EventStore:
                 logger.error("event_listener_error", error=str(e))
 
     async def replay(
-        self,
-        session_id: str,
-        start_from: Optional[str] = None
+        self, session_id: str, start_from: Optional[str] = None
     ) -> List[TranscriptionEvent]:
         """
         Replay all events for a session.
@@ -304,19 +309,12 @@ class EventStore:
             except Exception as e:
                 logger.error("event_replay_error", path=str(log_path), error=str(e))
 
-        logger.info(
-            "event_replay",
-            session_id=session_id,
-            event_count=len(events)
-        )
+        logger.info("event_replay", session_id=session_id, event_count=len(events))
 
         return events
 
     async def query_by_time(
-        self,
-        start: datetime,
-        end: datetime,
-        event_types: Optional[List[str]] = None
+        self, start: datetime, end: datetime, event_types: Optional[List[str]] = None
     ) -> List[TranscriptionEvent]:
         """
         Query events in a time range.
@@ -356,9 +354,7 @@ class EventStore:
         return events
 
     async def query_by_type(
-        self,
-        event_type: str,
-        limit: int = 100
+        self, event_type: str, limit: int = 100
     ) -> List[TranscriptionEvent]:
         """
         Query most recent events of a specific type.
@@ -373,7 +369,9 @@ class EventStore:
         events = []
 
         # Read files in reverse order (newest first)
-        for log_path in sorted(self.config.log_dir.glob("events_*.jsonl"), reverse=True):
+        for log_path in sorted(
+            self.config.log_dir.glob("events_*.jsonl"), reverse=True
+        ):
             if len(events) >= limit:
                 break
 
@@ -422,13 +420,13 @@ class EventStore:
             "event_types": event_counts,
             "started_at": first_event.timestamp.isoformat(),
             "last_event_at": last_event.timestamp.isoformat(),
-            "duration_seconds": (last_event.timestamp - first_event.timestamp).total_seconds(),
+            "duration_seconds": (
+                last_event.timestamp - first_event.timestamp
+            ).total_seconds(),
             "last_event_type": last_event.event_type,
             "has_error": any(e.event_type == EventType.ERROR for e in events),
-            "is_completed": last_event.event_type in [
-                EventType.SESSION_COMPLETED,
-                EventType.BUNDLE_COMPLETED
-            ],
+            "is_completed": last_event.event_type
+            in [EventType.SESSION_COMPLETED, EventType.BUNDLE_COMPLETED],
         }
 
     async def verify_chain(self, session_id: Optional[str] = None) -> Dict[str, Any]:
@@ -450,7 +448,9 @@ class EventStore:
                 with open(log_path, "r") as f:
                     for line in f:
                         if line.strip():
-                            events.append(TranscriptionEvent.from_dict(json.loads(line)))
+                            events.append(
+                                TranscriptionEvent.from_dict(json.loads(line))
+                            )
 
         if not events:
             return {"verified": True, "event_count": 0}
@@ -508,17 +508,14 @@ class EventStore:
 
 # Convenience functions
 
-def create_event(
-    event_type: str,
-    session_id: str,
-    **data
-) -> TranscriptionEvent:
+
+def create_event(event_type: str, session_id: str, **data) -> TranscriptionEvent:
     """Create a new event with current timestamp."""
     return TranscriptionEvent(
         event_type=event_type,
         timestamp=datetime.now(),
         session_id=session_id,
-        data=data
+        data=data,
     )
 
 

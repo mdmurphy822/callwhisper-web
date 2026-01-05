@@ -30,6 +30,7 @@ logger = get_core_logger()
 @dataclass
 class ResourceConfig:
     """Configuration for resource manager."""
+
     max_open_files: int = 100
     max_temp_files: int = 50
     cleanup_interval: float = 60.0  # seconds
@@ -43,7 +44,8 @@ class ResourceEntry:
 
     Uses __slots__ for memory efficiency.
     """
-    __slots__ = ('path', 'handle', 'opened_at', 'last_accessed', 'access_count', 'mode')
+
+    __slots__ = ("path", "handle", "opened_at", "last_accessed", "access_count", "mode")
 
     path: str
     handle: Any
@@ -52,12 +54,7 @@ class ResourceEntry:
     access_count: int
     mode: str
 
-    def __init__(
-        self,
-        path: str,
-        handle: Any,
-        mode: str = 'rb'
-    ):
+    def __init__(self, path: str, handle: Any, mode: str = "rb"):
         self.path = path
         self.handle = handle
         self.mode = mode
@@ -102,6 +99,7 @@ class ResourceManager:
 
     def _start_cleanup_thread(self):
         """Start background cleanup thread."""
+
         def cleanup_loop():
             while True:
                 time.sleep(self.config.cleanup_interval)
@@ -112,9 +110,7 @@ class ResourceManager:
 
     @contextmanager
     def open_file(
-        self,
-        path: Path,
-        mode: str = 'rb'
+        self, path: Path, mode: str = "rb"
     ) -> Generator[Union[BinaryIO, TextIO], None, None]:
         """
         Context manager for opening files with tracking.
@@ -151,16 +147,14 @@ class ResourceManager:
 
             with self._lock:
                 self._open_files[path_str] = ResourceEntry(
-                    path=path_str,
-                    handle=handle,
-                    mode=mode
+                    path=path_str, handle=handle, mode=mode
                 )
 
             logger.debug(
                 "resource_open",
                 path=path_str,
                 mode=mode,
-                open_count=len(self._open_files)
+                open_count=len(self._open_files),
             )
 
             try:
@@ -175,10 +169,7 @@ class ResourceManager:
             raise
 
     @contextmanager
-    def open_audio(
-        self,
-        path: Path
-    ) -> Generator[BinaryIO, None, None]:
+    def open_audio(self, path: Path) -> Generator[BinaryIO, None, None]:
         """
         Context manager for opening audio files.
 
@@ -190,7 +181,7 @@ class ResourceManager:
         Yields:
             Binary file handle
         """
-        with self.open_file(path, 'rb') as f:
+        with self.open_file(path, "rb") as f:
             yield f
 
     def _close_file(self, path_str: str):
@@ -210,9 +201,7 @@ class ResourceManager:
                 del self._open_files[path_str]
 
             logger.debug(
-                "resource_close",
-                path=path_str,
-                open_count=len(self._open_files)
+                "resource_close", path=path_str, open_count=len(self._open_files)
             )
 
     def _ensure_capacity(self):
@@ -227,7 +216,7 @@ class ResourceManager:
                 "resource_high_utilization",
                 open_count=len(self._open_files),
                 max_count=self.config.max_open_files,
-                utilization=round(utilization, 2)
+                utilization=round(utilization, 2),
             )
 
     def _evict_lru(self):
@@ -237,8 +226,7 @@ class ResourceManager:
 
         # Find LRU entry
         lru_path = min(
-            self._open_files.keys(),
-            key=lambda p: self._open_files[p].last_accessed
+            self._open_files.keys(), key=lambda p: self._open_files[p].last_accessed
         )
 
         logger.debug("resource_evict", path=lru_path)
@@ -251,7 +239,8 @@ class ResourceManager:
 
         with self._lock:
             stale_paths = [
-                path for path, entry in self._open_files.items()
+                path
+                for path, entry in self._open_files.items()
                 if entry.last_accessed < stale_threshold
             ]
 
@@ -264,7 +253,7 @@ class ResourceManager:
         self,
         suffix: str = ".tmp",
         prefix: str = "callwhisper_",
-        delete_on_exit: bool = True
+        delete_on_exit: bool = True,
     ) -> Generator[Path, None, None]:
         """
         Context manager for temporary files.
@@ -326,7 +315,7 @@ class ResourceManager:
 
         # Sort by modification time and delete oldest
         paths.sort(key=lambda p: p.stat().st_mtime if p.exists() else 0)
-        for path in paths[:len(paths) // 2]:  # Delete oldest half
+        for path in paths[: len(paths) // 2]:  # Delete oldest half
             self._delete_temp_file(path)
 
     def close_all(self):
@@ -343,7 +332,9 @@ class ResourceManager:
         for path in temp_paths:
             self._delete_temp_file(path)
 
-        logger.info("resource_close_all", closed=len(paths), temp_deleted=len(temp_paths))
+        logger.info(
+            "resource_close_all", closed=len(paths), temp_deleted=len(temp_paths)
+        )
 
     def get_stats(self) -> Dict[str, Any]:
         """Get resource manager statistics."""
@@ -391,9 +382,7 @@ class AudioResourceManager(ResourceManager):
 
     @contextmanager
     def open_audio_stream(
-        self,
-        path: Path,
-        chunk_size: int = 65536
+        self, path: Path, chunk_size: int = 65536
     ) -> Generator[Generator[bytes, None, None], None, None]:
         """
         Open audio file as a streaming generator.
@@ -407,6 +396,7 @@ class AudioResourceManager(ResourceManager):
         Yields:
             Generator that yields chunks
         """
+
         def chunk_generator(handle):
             while True:
                 chunk = handle.read(chunk_size)

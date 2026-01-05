@@ -50,6 +50,7 @@ def _get_default_blocklist() -> List[str]:
 
 class ServerConfig(BaseModel):
     """Server configuration."""
+
     host: str = "127.0.0.1"
     port: int = 8765
     open_browser: bool = True
@@ -57,6 +58,7 @@ class ServerConfig(BaseModel):
 
 class AudioConfig(BaseModel):
     """Audio capture configuration."""
+
     sample_rate: int = 44100
     channels: int = 2
     format: str = "pcm_s16le"
@@ -64,6 +66,7 @@ class AudioConfig(BaseModel):
 
 class TranscriptionConfig(BaseModel):
     """Transcription configuration."""
+
     model: str = "ggml-medium.en.bin"
     language: str = "en"
     beam_size: int = 5
@@ -72,6 +75,7 @@ class TranscriptionConfig(BaseModel):
 
 class OutputConfig(BaseModel):
     """Output configuration."""
+
     directory: str = "output"
     create_bundle: bool = True
     audio_format: str = "opus"
@@ -79,6 +83,7 @@ class OutputConfig(BaseModel):
 
 class DeviceGuardConfig(BaseModel):
     """Device guard configuration for mic protection."""
+
     enabled: bool = True
     allowlist: List[str] = None  # Will use platform-specific defaults
     blocklist: List[str] = None  # Will use platform-specific defaults
@@ -94,6 +99,7 @@ class DeviceGuardConfig(BaseModel):
 
 class SecurityConfig(BaseModel):
     """Security configuration."""
+
     # CORS settings
     cors_enabled: bool = True
     allowed_origins: List[str] = ["http://localhost:8765", "http://127.0.0.1:8765"]
@@ -118,6 +124,7 @@ class SecurityConfig(BaseModel):
 
 class PerformanceConfig(BaseModel):
     """Performance tuning configuration."""
+
     # Parallel processing
     max_concurrent_transcriptions: int = 4
     chunk_size_seconds: float = 30.0
@@ -135,6 +142,7 @@ class PerformanceConfig(BaseModel):
 
 class TimeoutConfig(BaseModel):
     """Timeout configuration for various operations."""
+
     # Device enumeration
     device_enumeration_seconds: float = 10.0
 
@@ -157,6 +165,7 @@ class CallDetectorConfig(BaseModel):
     Uses WASAPI audio session monitoring to detect when Cisco Jabber
     or Finesse calls start/stop, then triggers recording automatically.
     """
+
     # Feature toggle - disabled by default
     enabled: bool = False
 
@@ -168,18 +177,19 @@ class CallDetectorConfig(BaseModel):
     finesse_url_pattern: str = "finesse"  # Match in window title
 
     # Timing: debounce periods to avoid false triggers
-    call_start_confirm_seconds: float = 1.0   # Confirm audio active for 1s
-    call_end_confirm_seconds: float = 2.0     # Confirm audio inactive for 2s
-    audio_poll_interval: float = 0.5          # How often to poll audio sessions
-    process_poll_interval: float = 2.0        # How often to poll processes
+    call_start_confirm_seconds: float = 1.0  # Confirm audio active for 1s
+    call_end_confirm_seconds: float = 2.0  # Confirm audio inactive for 2s
+    audio_poll_interval: float = 0.5  # How often to poll audio sessions
+    process_poll_interval: float = 2.0  # How often to poll processes
 
     # Safety limits
-    max_call_duration_minutes: int = 180      # Auto-stop after 3 hours
-    min_call_duration_seconds: int = 5        # Discard calls shorter than 5s
+    max_call_duration_minutes: int = 180  # Auto-stop after 3 hours
+    min_call_duration_seconds: int = 5  # Discard calls shorter than 5s
 
 
 class Settings(BaseModel):
     """Application settings."""
+
     version: str = "1.0.0"
     server: ServerConfig = ServerConfig()
     audio: AudioConfig = AudioConfig()

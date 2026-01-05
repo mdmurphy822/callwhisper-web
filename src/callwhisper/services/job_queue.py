@@ -25,6 +25,7 @@ logger = get_logger(__name__)
 @dataclass
 class QueuedJob:
     """Represents a job in the transcription queue."""
+
     job_id: str
     audio_path: Path
     original_filename: str
@@ -71,9 +72,13 @@ class JobQueue:
         self._lock = asyncio.Lock()
         self._worker_task: Optional[asyncio.Task] = None
         self._stop_event = asyncio.Event()
-        self._status_callback: Optional[Callable[[Dict[str, Any]], Awaitable[None]]] = None
+        self._status_callback: Optional[Callable[[Dict[str, Any]], Awaitable[None]]] = (
+            None
+        )
 
-    def set_status_callback(self, callback: Callable[[Dict[str, Any]], Awaitable[None]]):
+    def set_status_callback(
+        self, callback: Callable[[Dict[str, Any]], Awaitable[None]]
+    ):
         """Set callback for status updates (used for WebSocket notifications)."""
         self._status_callback = callback
 
@@ -112,7 +117,7 @@ class JobQueue:
             job_id=job_id,
             filename=original_filename,
             priority=priority,
-            queue_length=len(self._queue)
+            queue_length=len(self._queue),
         )
         await self._notify_status_change()
         return job_id
@@ -136,7 +141,7 @@ class JobQueue:
                     logger.info(
                         "job_processing_started",
                         job_id=job_id,
-                        filename=job.original_filename
+                        filename=job.original_filename,
                     )
                     await self._notify_status_change()
                     return job
@@ -154,7 +159,9 @@ class JobQueue:
         async with self._lock:
             if self._processing and self._processing.job_id == job_id:
                 self._processing.completed_at = datetime.now().timestamp()
-                self._processing.progress = 100 if success else self._processing.progress
+                self._processing.progress = (
+                    100 if success else self._processing.progress
+                )
                 if success:
                     self._processing.status = "complete"
                     self._completed.append(self._processing)
@@ -162,7 +169,8 @@ class JobQueue:
                         "job_completed",
                         job_id=job_id,
                         filename=self._processing.original_filename,
-                        duration_seconds=self._processing.completed_at - self._processing.started_at
+                        duration_seconds=self._processing.completed_at
+                        - self._processing.started_at,
                     )
                 else:
                     self._processing.status = "failed"
@@ -172,7 +180,7 @@ class JobQueue:
                         "job_failed",
                         job_id=job_id,
                         filename=self._processing.original_filename,
-                        error=error
+                        error=error,
                     )
                 self._processing = None
         await self._notify_status_change()
@@ -189,9 +197,7 @@ class JobQueue:
                             removed_job.audio_path.unlink()
                         except Exception as e:
                             logger.warning(
-                                "job_cleanup_failed",
-                                job_id=job_id,
-                                error=str(e)
+                                "job_cleanup_failed", job_id=job_id, error=str(e)
                             )
                     logger.info("job_cancelled", job_id=job_id)
                     await self._notify_status_change()
@@ -217,7 +223,7 @@ class JobQueue:
                 "processing": 1 if self._processing else 0,
                 "completed": len(self._completed),
                 "failed": len(self._failed),
-            }
+            },
         }
 
     def get_job(self, job_id: str) -> Optional[QueuedJob]:
@@ -242,9 +248,7 @@ class JobQueue:
             return
 
         self._stop_event.clear()
-        self._worker_task = asyncio.create_task(
-            self._worker_loop(process_func)
-        )
+        self._worker_task = asyncio.create_task(self._worker_loop(process_func))
         logger.info("queue_worker_started")
 
     async def stop_worker(self, wait: bool = True):
@@ -274,9 +278,7 @@ class JobQueue:
                     await self.complete_job(job.job_id, success=True)
                 except Exception as e:
                     logger.exception(
-                        "job_processing_error",
-                        job_id=job.job_id,
-                        error=str(e)
+                        "job_processing_error", job_id=job.job_id, error=str(e)
                     )
                     await self.complete_job(job.job_id, success=False, error=str(e))
             else:

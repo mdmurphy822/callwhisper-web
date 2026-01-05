@@ -33,7 +33,8 @@ class AudioChunk:
 
     Uses __slots__ for memory efficiency.
     """
-    __slots__ = ('index', 'start_time', 'end_time', 'data', 'metadata')
+
+    __slots__ = ("index", "start_time", "end_time", "data", "metadata")
 
     index: int
     start_time: float
@@ -47,7 +48,7 @@ class AudioChunk:
         start_time: float,
         end_time: float,
         data: bytes,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ):
         self.index = index
         self.start_time = start_time
@@ -67,6 +68,7 @@ class AudioChunk:
 @dataclass
 class AudioMetadata:
     """Audio file metadata from ffprobe."""
+
     duration: float
     sample_rate: int
     channels: int
@@ -79,9 +81,10 @@ class AudioMetadata:
 @dataclass
 class PipelineConfig:
     """Configuration for audio pipeline."""
+
     chunk_duration: float = 30.0  # Seconds per chunk
-    sample_rate: int = 16000      # Whisper requires 16kHz
-    channels: int = 1             # Mono for transcription
+    sample_rate: int = 16000  # Whisper requires 16kHz
+    channels: int = 1  # Mono for transcription
     ffmpeg_path: str = "ffmpeg"
     ffprobe_path: str = "ffprobe"
     temp_dir: Optional[Path] = None
@@ -128,9 +131,9 @@ class AudioPipeline:
         level = level or self._degradation_manager.get_current_level()
 
         durations = {
-            DegradationLevel.FULL: 30.0,      # Standard chunk size
-            DegradationLevel.BALANCED: 20.0,   # Smaller for faster feedback
-            DegradationLevel.FAST: 10.0,       # Minimal for maximum throughput
+            DegradationLevel.FULL: 30.0,  # Standard chunk size
+            DegradationLevel.BALANCED: 20.0,  # Smaller for faster feedback
+            DegradationLevel.FAST: 10.0,  # Minimal for maximum throughput
         }
 
         return durations.get(level, self.config.chunk_duration)
@@ -143,27 +146,26 @@ class AudioPipeline:
         """
         cmd = [
             self.config.ffprobe_path,
-            "-v", "quiet",
-            "-print_format", "json",
+            "-v",
+            "quiet",
+            "-print_format",
+            "json",
             "-show_format",
             "-show_streams",
-            str(audio_path)
+            str(audio_path),
         ]
 
         try:
             proc = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
             stdout, stderr = await proc.communicate()
 
             if proc.returncode != 0:
-                raise AudioProcessingError(
-                    f"ffprobe failed: {stderr.decode()}"
-                )
+                raise AudioProcessingError(f"ffprobe failed: {stderr.decode()}")
 
             import json
+
             data = json.loads(stdout.decode())
 
             # Find audio stream
@@ -196,7 +198,7 @@ class AudioPipeline:
         self,
         audio_path: Path,
         chunk_duration: float = None,
-        use_degradation_aware_chunking: bool = True
+        use_degradation_aware_chunking: bool = True,
     ) -> AsyncGenerator[AudioChunk, None]:
         """
         Stream audio in chunks without loading entire file.
@@ -230,7 +232,7 @@ class AudioPipeline:
             duration=total_duration,
             chunk_duration=chunk_duration,
             estimated_chunks=int(total_duration / chunk_duration) + 1,
-            degradation_level=current_level.value
+            degradation_level=current_level.value,
         )
 
         chunk_index = 0
@@ -244,9 +246,7 @@ class AudioPipeline:
             # Extract chunk using ffmpeg
             try:
                 chunk_data = await self._extract_chunk(
-                    audio_path,
-                    start_time=offset,
-                    duration=actual_duration
+                    audio_path, start_time=offset, duration=actual_duration
                 )
 
                 chunk = AudioChunk(
@@ -258,7 +258,7 @@ class AudioPipeline:
                         "source_file": str(audio_path),
                         "sample_rate": self.config.sample_rate,
                         "channels": self.config.channels,
-                    }
+                    },
                 )
 
                 logger.debug(
@@ -266,7 +266,7 @@ class AudioPipeline:
                     index=chunk_index,
                     start=offset,
                     end=end_time,
-                    size_bytes=len(chunk_data)
+                    size_bytes=len(chunk_data),
                 )
 
                 yield chunk
@@ -276,26 +276,18 @@ class AudioPipeline:
 
             except Exception as e:
                 logger.error(
-                    "audio_chunk_error",
-                    index=chunk_index,
-                    offset=offset,
-                    error=str(e)
+                    "audio_chunk_error", index=chunk_index, offset=offset, error=str(e)
                 )
                 raise AudioProcessingError(
                     f"Failed to extract chunk {chunk_index}: {e}"
                 )
 
         logger.info(
-            "audio_pipeline_complete",
-            path=str(audio_path),
-            total_chunks=chunk_index
+            "audio_pipeline_complete", path=str(audio_path), total_chunks=chunk_index
         )
 
     async def _extract_chunk(
-        self,
-        audio_path: Path,
-        start_time: float,
-        duration: float
+        self, audio_path: Path, start_time: float, duration: float
     ) -> bytes:
         """
         Extract a chunk of audio using ffmpeg.
@@ -304,19 +296,23 @@ class AudioPipeline:
         """
         cmd = [
             self.config.ffmpeg_path,
-            "-ss", str(start_time),
-            "-t", str(duration),
-            "-i", str(audio_path),
-            "-ar", str(self.config.sample_rate),
-            "-ac", str(self.config.channels),
-            "-f", "wav",
-            "-"  # Output to stdout
+            "-ss",
+            str(start_time),
+            "-t",
+            str(duration),
+            "-i",
+            str(audio_path),
+            "-ar",
+            str(self.config.sample_rate),
+            "-ac",
+            str(self.config.channels),
+            "-f",
+            "wav",
+            "-",  # Output to stdout
         ]
 
         proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
 
         stdout, stderr = await proc.communicate()
@@ -329,9 +325,7 @@ class AudioPipeline:
         return stdout
 
     async def process_all(
-        self,
-        audio_path: Path,
-        processor: callable = None
+        self, audio_path: Path, processor: callable = None
     ) -> List[Any]:
         """
         Process all chunks with optional processor function.
@@ -353,19 +347,19 @@ class AudioPipeline:
                 results.append(result)
             else:
                 # Just collect chunk metadata, not data
-                results.append({
-                    "index": chunk.index,
-                    "start_time": chunk.start_time,
-                    "end_time": chunk.end_time,
-                    "size_bytes": chunk.size_bytes,
-                })
+                results.append(
+                    {
+                        "index": chunk.index,
+                        "start_time": chunk.start_time,
+                        "end_time": chunk.end_time,
+                        "size_bytes": chunk.size_bytes,
+                    }
+                )
 
         return results
 
     def stream_chunks_sync(
-        self,
-        audio_path: Path,
-        chunk_duration: float = None
+        self, audio_path: Path, chunk_duration: float = None
     ) -> Generator[AudioChunk, None, None]:
         """
         Synchronous version of stream_chunks.
@@ -380,10 +374,13 @@ class AudioPipeline:
         # Get duration synchronously
         cmd = [
             self.config.ffprobe_path,
-            "-v", "quiet",
-            "-show_entries", "format=duration",
-            "-of", "default=noprint_wrappers=1:nokey=1",
-            str(audio_path)
+            "-v",
+            "quiet",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            str(audio_path),
         ]
 
         result = subprocess.run(cmd, capture_output=True, text=True)
@@ -393,9 +390,7 @@ class AudioPipeline:
         total_duration = float(result.stdout.strip())
 
         logger.info(
-            "audio_pipeline_sync_start",
-            path=str(audio_path),
-            duration=total_duration
+            "audio_pipeline_sync_start", path=str(audio_path), duration=total_duration
         )
 
         chunk_index = 0
@@ -408,13 +403,19 @@ class AudioPipeline:
             # Extract chunk
             cmd = [
                 self.config.ffmpeg_path,
-                "-ss", str(offset),
-                "-t", str(actual_duration),
-                "-i", str(audio_path),
-                "-ar", str(self.config.sample_rate),
-                "-ac", str(self.config.channels),
-                "-f", "wav",
-                "-"
+                "-ss",
+                str(offset),
+                "-t",
+                str(actual_duration),
+                "-i",
+                str(audio_path),
+                "-ar",
+                str(self.config.sample_rate),
+                "-ac",
+                str(self.config.channels),
+                "-f",
+                "wav",
+                "-",
             ]
 
             result = subprocess.run(cmd, capture_output=True)
@@ -432,7 +433,7 @@ class AudioPipeline:
                 metadata={
                     "source_file": str(audio_path),
                     "sample_rate": self.config.sample_rate,
-                }
+                },
             )
 
             yield chunk
@@ -440,11 +441,7 @@ class AudioPipeline:
             chunk_index += 1
             offset = end_time
 
-    async def normalize_audio(
-        self,
-        audio_path: Path,
-        output_path: Path = None
-    ) -> Path:
+    async def normalize_audio(self, audio_path: Path, output_path: Path = None) -> Path:
         """
         Normalize audio file for transcription.
 
@@ -458,44 +455,40 @@ class AudioPipeline:
         cmd = [
             self.config.ffmpeg_path,
             "-y",
-            "-i", str(audio_path),
-            "-ar", str(self.config.sample_rate),
-            "-ac", str(self.config.channels),
-            "-c:a", "pcm_s16le",
-            str(output_path)
+            "-i",
+            str(audio_path),
+            "-ar",
+            str(self.config.sample_rate),
+            "-ac",
+            str(self.config.channels),
+            "-c:a",
+            "pcm_s16le",
+            str(output_path),
         ]
 
         logger.info(
-            "audio_normalize_start",
-            input=str(audio_path),
-            output=str(output_path)
+            "audio_normalize_start", input=str(audio_path), output=str(output_path)
         )
 
         proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
 
         _, stderr = await proc.communicate()
 
         if proc.returncode != 0:
-            raise AudioProcessingError(
-                f"Audio normalization failed: {stderr.decode()}"
-            )
+            raise AudioProcessingError(f"Audio normalization failed: {stderr.decode()}")
 
         logger.info(
             "audio_normalize_complete",
             output=str(output_path),
-            size_bytes=output_path.stat().st_size
+            size_bytes=output_path.stat().st_size,
         )
 
         return output_path
 
     def estimate_memory_usage(
-        self,
-        total_duration: float,
-        chunk_duration: float = None
+        self, total_duration: float, chunk_duration: float = None
     ) -> Dict[str, Any]:
         """
         Estimate memory usage for processing.
@@ -525,9 +518,9 @@ class AudioPipeline:
 
 # Convenience functions
 
+
 async def stream_audio_chunks(
-    audio_path: Path,
-    chunk_duration: float = 30.0
+    audio_path: Path, chunk_duration: float = 30.0
 ) -> AsyncGenerator[AudioChunk, None]:
     """
     Stream audio in chunks without loading entire file.

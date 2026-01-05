@@ -26,6 +26,7 @@ VTB_EXTENSION = ".vtb"
 @dataclass
 class VTBManifest:
     """Manifest metadata for VTB bundle."""
+
     version: str
     format: str
     created: str
@@ -60,7 +61,7 @@ def get_compression(filename: str) -> int:
     """Get appropriate ZIP compression method."""
     ext = Path(filename).suffix.lower()
     # Already compressed formats - store without compression
-    if ext in {'.opus', '.mp3', '.ogg', '.m4a', '.png', '.jpg'}:
+    if ext in {".opus", ".mp3", ".ogg", ".m4a", ".png", ".jpg"}:
         return zipfile.ZIP_STORED
     # Everything else gets deflate
     return zipfile.ZIP_DEFLATED
@@ -121,7 +122,7 @@ async def create_vtb_bundle(
     # Read transcript for word count
     word_count = 0
     if transcript_txt.exists():
-        with open(transcript_txt, 'r', encoding='utf-8') as f:
+        with open(transcript_txt, "r", encoding="utf-8") as f:
             word_count = len(f.read().split())
 
     # Build file list with hashes
@@ -132,34 +133,40 @@ async def create_vtb_bundle(
     # Add audio
     files_to_add.append((audio_archive_path, bundle_audio))
     file_hashes[audio_archive_path] = compute_sha256(bundle_audio)
-    file_entries.append({
-        "path": audio_archive_path,
-        "size_bytes": bundle_audio.stat().st_size,
-        "content_type": get_content_type(str(bundle_audio)),
-        "required": True,
-    })
+    file_entries.append(
+        {
+            "path": audio_archive_path,
+            "size_bytes": bundle_audio.stat().st_size,
+            "content_type": get_content_type(str(bundle_audio)),
+            "required": True,
+        }
+    )
 
     # Add transcript.txt
     if transcript_txt.exists():
         files_to_add.append(("transcript/transcript.txt", transcript_txt))
         file_hashes["transcript/transcript.txt"] = compute_sha256(transcript_txt)
-        file_entries.append({
-            "path": "transcript/transcript.txt",
-            "size_bytes": transcript_txt.stat().st_size,
-            "content_type": "text/plain; charset=utf-8",
-            "required": True,
-        })
+        file_entries.append(
+            {
+                "path": "transcript/transcript.txt",
+                "size_bytes": transcript_txt.stat().st_size,
+                "content_type": "text/plain; charset=utf-8",
+                "required": True,
+            }
+        )
 
     # Add transcript.srt if exists
     if transcript_srt.exists():
         files_to_add.append(("transcript/transcript.srt", transcript_srt))
         file_hashes["transcript/transcript.srt"] = compute_sha256(transcript_srt)
-        file_entries.append({
-            "path": "transcript/transcript.srt",
-            "size_bytes": transcript_srt.stat().st_size,
-            "content_type": "application/x-subrip",
-            "required": False,
-        })
+        file_entries.append(
+            {
+                "path": "transcript/transcript.srt",
+                "size_bytes": transcript_srt.stat().st_size,
+                "content_type": "application/x-subrip",
+                "required": False,
+            }
+        )
 
     # Build manifest
     now = datetime.now(timezone.utc).isoformat()
@@ -182,7 +189,7 @@ async def create_vtb_bundle(
     )
 
     manifest_json = json.dumps(asdict(manifest), indent=2)
-    manifest_hash = compute_sha256_bytes(manifest_json.encode('utf-8'))
+    manifest_hash = compute_sha256_bytes(manifest_json.encode("utf-8"))
 
     # Build hashes document
     hashes_doc = {
@@ -198,26 +205,22 @@ async def create_vtb_bundle(
     bundle_path = output_folder / bundle_name
 
     # Create the ZIP archive
-    with zipfile.ZipFile(bundle_path, 'w') as zf:
+    with zipfile.ZipFile(bundle_path, "w") as zf:
         # 1. Write mimetype FIRST, uncompressed
         zf.writestr(
-            "mimetype",
-            VTB_MIMETYPE.encode('ascii'),
-            compress_type=zipfile.ZIP_STORED
+            "mimetype", VTB_MIMETYPE.encode("ascii"), compress_type=zipfile.ZIP_STORED
         )
 
         # 2. Write manifest
         zf.writestr(
-            "META-INF/manifest.json",
-            manifest_json,
-            compress_type=zipfile.ZIP_DEFLATED
+            "META-INF/manifest.json", manifest_json, compress_type=zipfile.ZIP_DEFLATED
         )
 
         # 3. Write hashes
         zf.writestr(
             "META-INF/hashes.json",
             json.dumps(hashes_doc, indent=2),
-            compress_type=zipfile.ZIP_DEFLATED
+            compress_type=zipfile.ZIP_DEFLATED,
         )
 
         # 4. Write content files
@@ -241,7 +244,7 @@ def extract_vtb(bundle_path: Path, destination: Path) -> Path:
     """
     destination.mkdir(parents=True, exist_ok=True)
 
-    with zipfile.ZipFile(bundle_path, 'r') as zf:
+    with zipfile.ZipFile(bundle_path, "r") as zf:
         zf.extractall(destination)
 
     return destination
@@ -259,7 +262,7 @@ def verify_vtb(bundle_path: Path) -> Dict[str, bool]:
     """
     results = {}
 
-    with zipfile.ZipFile(bundle_path, 'r') as zf:
+    with zipfile.ZipFile(bundle_path, "r") as zf:
         # Load stored hashes
         try:
             hashes_data = json.loads(zf.read("META-INF/hashes.json"))
@@ -272,7 +275,7 @@ def verify_vtb(bundle_path: Path) -> Dict[str, bool]:
             try:
                 content = zf.read(file_path)
                 actual_hash = compute_sha256_bytes(content)
-                results[file_path] = (actual_hash == expected_hash)
+                results[file_path] = actual_hash == expected_hash
             except KeyError:
                 results[file_path] = False
 
@@ -289,7 +292,7 @@ def get_vtb_info(bundle_path: Path) -> Dict[str, Any]:
     Returns:
         Dict with bundle information
     """
-    with zipfile.ZipFile(bundle_path, 'r') as zf:
+    with zipfile.ZipFile(bundle_path, "r") as zf:
         manifest_data = json.loads(zf.read("META-INF/manifest.json"))
 
     return {

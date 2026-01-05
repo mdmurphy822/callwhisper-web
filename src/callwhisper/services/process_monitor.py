@@ -24,6 +24,7 @@ logger = get_logger(__name__)
 @dataclass
 class ProcessEvent:
     """Event fired when a target process starts or stops."""
+
     event_type: str  # "started" or "stopped"
     process_name: str
     process_id: int
@@ -49,7 +50,7 @@ class ProcessMonitor:
         self,
         target_processes: List[str],
         poll_interval: float = 2.0,
-        use_wmi_events: bool = False  # WMI events require admin, use polling by default
+        use_wmi_events: bool = False,  # WMI events require admin, use polling by default
     ):
         """
         Initialize the process monitor.
@@ -75,7 +76,7 @@ class ProcessMonitor:
             "process_monitor_initialized",
             targets=self._targets,
             poll_interval=poll_interval,
-            use_wmi_events=use_wmi_events
+            use_wmi_events=use_wmi_events,
         )
 
     def add_callback(self, callback: Callable[[ProcessEvent], None]) -> None:
@@ -108,9 +109,7 @@ class ProcessMonitor:
 
         # Start monitoring thread
         self._thread = threading.Thread(
-            target=self._monitor_loop,
-            name="ProcessMonitor",
-            daemon=True
+            target=self._monitor_loop, name="ProcessMonitor", daemon=True
         )
         self._thread.start()
         logger.info("process_monitor_started")
@@ -129,7 +128,10 @@ class ProcessMonitor:
         """Check if a target process is currently running."""
         name_lower = name.lower()
         with self._lock:
-            return name_lower in self._known_processes and len(self._known_processes[name_lower]) > 0
+            return (
+                name_lower in self._known_processes
+                and len(self._known_processes[name_lower]) > 0
+            )
 
     def get_running_processes(self) -> Dict[str, List[int]]:
         """Get all running target processes and their PIDs."""
@@ -144,11 +146,13 @@ class ProcessMonitor:
         processes = []
         try:
             for proc in self._wmi.Win32_Process():
-                processes.append({
-                    "name": proc.Name,
-                    "pid": proc.ProcessId,
-                    "command_line": proc.CommandLine or ""
-                })
+                processes.append(
+                    {
+                        "name": proc.Name,
+                        "pid": proc.ProcessId,
+                        "command_line": proc.CommandLine or "",
+                    }
+                )
         except Exception as e:
             logger.error("enumerate_processes_error", error=str(e))
 
@@ -183,8 +187,7 @@ class ProcessMonitor:
 
             # Watch for process creation
             process_watcher = wmi_events.Win32_Process.watch_for(
-                notification_type="creation",
-                delay_secs=1
+                notification_type="creation", delay_secs=1
             )
 
             while self._running:
@@ -194,11 +197,13 @@ class ProcessMonitor:
                     if new_process:
                         name = new_process.Name.lower()
                         if name in self._targets:
-                            self._fire_event(ProcessEvent(
-                                event_type="started",
-                                process_name=new_process.Name,
-                                process_id=new_process.ProcessId
-                            ))
+                            self._fire_event(
+                                ProcessEvent(
+                                    event_type="started",
+                                    process_name=new_process.Name,
+                                    process_id=new_process.ProcessId,
+                                )
+                            )
                             with self._lock:
                                 if name not in self._known_processes:
                                     self._known_processes[name] = set()
@@ -211,11 +216,7 @@ class ProcessMonitor:
                     logger.error("wmi_event_error", error=str(e))
 
         except Exception as e:
-            logger.error(
-                "wmi_event_loop_failed",
-                error=str(e),
-                fallback="polling"
-            )
+            logger.error("wmi_event_loop_failed", error=str(e), fallback="polling")
             # Fall back to polling
             self._poll_loop()
 
@@ -237,18 +238,20 @@ class ProcessMonitor:
                         self._known_processes[name].add(proc.ProcessId)
 
                         # Fire initial started event for existing processes
-                        self._fire_event(ProcessEvent(
-                            event_type="started",
-                            process_name=proc.Name,
-                            process_id=proc.ProcessId
-                        ))
+                        self._fire_event(
+                            ProcessEvent(
+                                event_type="started",
+                                process_name=proc.Name,
+                                process_id=proc.ProcessId,
+                            )
+                        )
 
             except Exception as e:
                 logger.error("process_snapshot_error", error=str(e))
 
         logger.info(
             "process_snapshot_complete",
-            processes={k: len(v) for k, v in self._known_processes.items()}
+            processes={k: len(v) for k, v in self._known_processes.items()},
         )
 
     def _check_processes(self) -> None:
@@ -275,19 +278,19 @@ class ProcessMonitor:
 
                 # Check for started processes
                 for pid in new_pids - old_pids:
-                    self._fire_event(ProcessEvent(
-                        event_type="started",
-                        process_name=name,
-                        process_id=pid
-                    ))
+                    self._fire_event(
+                        ProcessEvent(
+                            event_type="started", process_name=name, process_id=pid
+                        )
+                    )
 
                 # Check for stopped processes
                 for pid in old_pids - new_pids:
-                    self._fire_event(ProcessEvent(
-                        event_type="stopped",
-                        process_name=name,
-                        process_id=pid
-                    ))
+                    self._fire_event(
+                        ProcessEvent(
+                            event_type="stopped", process_name=name, process_id=pid
+                        )
+                    )
 
             # Update known processes
             self._known_processes = current_processes
@@ -316,11 +319,11 @@ class ProcessMonitor:
 
                 # Fire stopped events for missing PIDs
                 for pid in old_pids - new_pids:
-                    self._fire_event(ProcessEvent(
-                        event_type="stopped",
-                        process_name=name,
-                        process_id=pid
-                    ))
+                    self._fire_event(
+                        ProcessEvent(
+                            event_type="stopped", process_name=name, process_id=pid
+                        )
+                    )
 
             # Update known processes
             self._known_processes = current_pids
@@ -331,7 +334,7 @@ class ProcessMonitor:
             "process_event",
             event_type=event.event_type,
             process=event.process_name,
-            pid=event.process_id
+            pid=event.process_id,
         )
 
         for callback in self._callbacks:
@@ -341,7 +344,11 @@ class ProcessMonitor:
                 logger.error(
                     "process_callback_error",
                     error=str(e),
-                    callback=callback.__name__ if hasattr(callback, "__name__") else str(callback)
+                    callback=(
+                        callback.__name__
+                        if hasattr(callback, "__name__")
+                        else str(callback)
+                    ),
                 )
 
     @property

@@ -42,14 +42,17 @@ class TimeoutConfig:
         If normalize takes 120s, transcribe gets min(480, 600-120) = 480s
         If normalize takes 180s, transcribe gets min(480, 600-180) = 420s
     """
+
     workflow_max: float = 600.0  # 10 minutes total workflow
 
-    stage_timeouts: Dict[str, float] = field(default_factory=lambda: {
-        "upload": 120.0,      # 2 minutes for file upload
-        "normalize": 60.0,    # 1 minute for FFmpeg normalization
-        "transcribe": 480.0,  # 8 minutes for whisper.cpp
-        "bundle": 60.0,       # 1 minute for output bundling
-    })
+    stage_timeouts: Dict[str, float] = field(
+        default_factory=lambda: {
+            "upload": 120.0,  # 2 minutes for file upload
+            "normalize": 60.0,  # 1 minute for FFmpeg normalization
+            "transcribe": 480.0,  # 8 minutes for whisper.cpp
+            "bundle": 60.0,  # 1 minute for output bundling
+        }
+    )
 
     # Minimum timeout for any stage (prevent too-short timeouts)
     min_stage_timeout: float = 5.0
@@ -65,9 +68,14 @@ class WorkflowContext:
 
     Created at workflow start, passed through all stages.
     """
+
     __slots__ = (
-        'workflow_id', 'deadline', 'started_at', 'config',
-        'completed_stages', 'current_stage'
+        "workflow_id",
+        "deadline",
+        "started_at",
+        "config",
+        "completed_stages",
+        "current_stage",
     )
 
     workflow_id: str
@@ -77,11 +85,7 @@ class WorkflowContext:
     completed_stages: Dict[str, float]  # stage -> duration
     current_stage: Optional[str]
 
-    def __init__(
-        self,
-        workflow_id: str,
-        config: TimeoutConfig = None
-    ):
+    def __init__(self, workflow_id: str, config: TimeoutConfig = None):
         self.workflow_id = workflow_id
         self.config = config or TimeoutConfig()
         self.started_at = time.time()
@@ -116,9 +120,7 @@ class TimeoutCascade:
         self._active_workflows: Dict[str, WorkflowContext] = {}
 
     def start_workflow(
-        self,
-        workflow_id: str,
-        config: TimeoutConfig = None
+        self, workflow_id: str, config: TimeoutConfig = None
     ) -> WorkflowContext:
         """
         Start a new workflow with timeout tracking.
@@ -130,17 +132,14 @@ class TimeoutCascade:
         Returns:
             WorkflowContext to pass to stage() calls
         """
-        ctx = WorkflowContext(
-            workflow_id=workflow_id,
-            config=config or self.config
-        )
+        ctx = WorkflowContext(workflow_id=workflow_id, config=config or self.config)
         self._active_workflows[workflow_id] = ctx
 
         logger.info(
             "timeout_workflow_start",
             workflow_id=workflow_id,
             deadline=ctx.deadline,
-            workflow_max=ctx.config.workflow_max
+            workflow_max=ctx.config.workflow_max,
         )
 
         return ctx
@@ -181,10 +180,7 @@ class TimeoutCascade:
         Never returns less than min_stage_timeout.
         """
         remaining_workflow = ctx.deadline - time.time()
-        stage_max = ctx.config.stage_timeouts.get(
-            stage,
-            60.0  # Default stage timeout
-        )
+        stage_max = ctx.config.stage_timeouts.get(stage, 60.0)  # Default stage timeout
 
         effective = min(stage_max, remaining_workflow)
 
@@ -219,7 +215,7 @@ class TimeoutCascade:
                 "timeout_low_remaining",
                 workflow_id=ctx.workflow_id,
                 remaining=round(remaining, 1),
-                utilization=round(utilization, 2)
+                utilization=round(utilization, 2),
             )
 
     @contextmanager
@@ -248,7 +244,7 @@ class TimeoutCascade:
             "timeout_stage_start",
             workflow_id=ctx.workflow_id,
             stage=stage,
-            timeout=round(timeout, 1)
+            timeout=round(timeout, 1),
         )
 
         try:
@@ -263,7 +259,7 @@ class TimeoutCascade:
                 workflow_id=ctx.workflow_id,
                 stage=stage,
                 duration=round(duration, 2),
-                timeout_used=round(duration / timeout, 2) if timeout > 0 else 1.0
+                timeout_used=round(duration / timeout, 2) if timeout > 0 else 1.0,
             )
 
     async def stage(self, ctx: WorkflowContext, stage: str):
@@ -288,7 +284,7 @@ class TimeoutCascade:
             "timeout_stage_start",
             workflow_id=ctx.workflow_id,
             stage=stage,
-            timeout=round(timeout, 1)
+            timeout=round(timeout, 1),
         )
 
         class AsyncStageContext:
@@ -312,19 +308,16 @@ class TimeoutCascade:
                     workflow_id=self.ctx.workflow_id,
                     stage=self.stage,
                     duration=round(duration, 2),
-                    timeout_used=round(duration / self.timeout, 2) if self.timeout > 0 else 1.0
+                    timeout_used=(
+                        round(duration / self.timeout, 2) if self.timeout > 0 else 1.0
+                    ),
                 )
 
                 return False  # Don't suppress exceptions
 
         return AsyncStageContext(self, ctx, stage, timeout, stage_start)
 
-    async def run_with_timeout(
-        self,
-        ctx: WorkflowContext,
-        stage: str,
-        coro: Any
-    ) -> T:
+    async def run_with_timeout(self, ctx: WorkflowContext, stage: str, coro: Any) -> T:
         """
         Run a coroutine with stage timeout.
 
@@ -345,9 +338,7 @@ class TimeoutCascade:
 
         timeout = self.get_remaining(ctx, stage)
         if timeout <= 0:
-            raise ProcessTimeoutError(
-                f"No time remaining for stage '{stage}'"
-            )
+            raise ProcessTimeoutError(f"No time remaining for stage '{stage}'")
 
         ctx.current_stage = stage
         stage_start = time.time()
@@ -356,7 +347,7 @@ class TimeoutCascade:
             "timeout_stage_start",
             workflow_id=ctx.workflow_id,
             stage=stage,
-            timeout=round(timeout, 1)
+            timeout=round(timeout, 1),
         )
 
         try:
@@ -376,7 +367,7 @@ class TimeoutCascade:
                 "timeout_stage_end",
                 workflow_id=ctx.workflow_id,
                 stage=stage,
-                duration=round(duration, 2)
+                duration=round(duration, 2),
             )
 
     def get_workflow_status(self, workflow_id: str) -> Optional[Dict[str, Any]]:
@@ -401,10 +392,7 @@ class TimeoutCascade:
 
     def get_all_active(self) -> Dict[str, Dict[str, Any]]:
         """Get status of all active workflows."""
-        return {
-            wid: self.get_workflow_status(wid)
-            for wid in self._active_workflows
-        }
+        return {wid: self.get_workflow_status(wid) for wid in self._active_workflows}
 
 
 # Convenience function for simple use cases
@@ -419,18 +407,16 @@ def with_timeout(timeout: float):
         async def process_audio(path):
             ...
     """
+
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         async def wrapper(*args, **kwargs) -> T:
             try:
-                return await asyncio.wait_for(
-                    func(*args, **kwargs),
-                    timeout=timeout
-                )
+                return await asyncio.wait_for(func(*args, **kwargs), timeout=timeout)
             except asyncio.TimeoutError:
-                raise ProcessTimeoutError(
-                    f"{func.__name__} timed out after {timeout}s"
-                )
+                raise ProcessTimeoutError(f"{func.__name__} timed out after {timeout}s")
+
         return wrapper
+
     return decorator
 
 

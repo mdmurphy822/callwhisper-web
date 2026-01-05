@@ -6,7 +6,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks, File, UploadFile, Form, Depends
+from fastapi import (
+    APIRouter,
+    HTTPException,
+    BackgroundTasks,
+    File,
+    UploadFile,
+    Form,
+    Depends,
+)
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, field_validator
 import uuid
@@ -33,8 +41,14 @@ from ..core.metrics import get_transcription_store
 from ..services.job_queue import get_job_queue, QueuedJob
 from ..services.folder_scanner import scan_folder, scan_folder_paths, get_folder_stats
 from ..utils.paths import (
-    get_output_dir, get_ffmpeg_path, get_whisper_path, get_path_info,
-    get_models_dir, get_data_dir, sanitize_path_component, validate_path_within_directory
+    get_output_dir,
+    get_ffmpeg_path,
+    get_whisper_path,
+    get_path_info,
+    get_models_dir,
+    get_data_dir,
+    sanitize_path_component,
+    validate_path_within_directory,
 )
 
 logger = get_api_logger()
@@ -52,12 +66,12 @@ async def require_debug_enabled():
     settings = get_settings()
     if not settings.security.debug_endpoints_enabled:
         raise HTTPException(
-            status_code=404,
-            detail="Debug endpoints are disabled in production"
+            status_code=404, detail="Debug endpoints are disabled in production"
         )
 
 
 # Request/Response Models
+
 
 class HealthResponse(BaseModel):
     status: str
@@ -70,6 +84,7 @@ class HealthResponse(BaseModel):
 
 class ReadinessCheck(BaseModel):
     """Individual readiness check result."""
+
     name: str
     ready: bool
     details: Optional[str] = None
@@ -77,12 +92,14 @@ class ReadinessCheck(BaseModel):
 
 class ReadinessResponse(BaseModel):
     """Readiness probe response."""
+
     ready: bool
     checks: List[ReadinessCheck]
 
 
 class DetailedHealthCheck(BaseModel):
     """Individual detailed health check result."""
+
     name: str
     healthy: bool
     message: str
@@ -91,6 +108,7 @@ class DetailedHealthCheck(BaseModel):
 
 class DetailedHealthResponse(BaseModel):
     """Detailed health check response for pre-recording validation."""
+
     healthy: bool
     checks: List[DetailedHealthCheck]
     timestamp: float
@@ -98,6 +116,7 @@ class DetailedHealthResponse(BaseModel):
 
 class IncompleteJob(BaseModel):
     """Incomplete job information for recovery."""
+
     job_id: str
     audio_path: str
     status: str
@@ -112,12 +131,14 @@ class IncompleteJob(BaseModel):
 
 class IncompleteJobsResponse(BaseModel):
     """Response with list of incomplete jobs."""
+
     jobs: List[IncompleteJob]
     count: int
 
 
 class TranscriptionMetricItem(BaseModel):
     """Individual transcription metric."""
+
     job_id: str
     audio_duration_seconds: float
     transcription_duration_seconds: float
@@ -132,6 +153,7 @@ class TranscriptionMetricItem(BaseModel):
 
 class DailyStatsItem(BaseModel):
     """Daily statistics."""
+
     date: str
     transcription_count: int
     total_audio_seconds: float
@@ -143,6 +165,7 @@ class DailyStatsItem(BaseModel):
 
 class TranscriptionSummaryResponse(BaseModel):
     """Transcription metrics summary."""
+
     total_transcriptions: int
     total_audio_hours: float
     total_processing_hours: float
@@ -153,6 +176,7 @@ class TranscriptionSummaryResponse(BaseModel):
 
 class MetricsResponse(BaseModel):
     """Application metrics response."""
+
     uptime_seconds: float
     operations: Dict[str, Any]
     circuit_breakers: Dict[str, Any]
@@ -164,6 +188,7 @@ class MetricsResponse(BaseModel):
 
 class DebugStateResponse(BaseModel):
     """Debug state response."""
+
     request_id: str
     current_state: str
     current_session: Optional[Dict[str, Any]]
@@ -174,6 +199,7 @@ class DebugStateResponse(BaseModel):
 
 class SetupStatusResponse(BaseModel):
     """First-run setup status response."""
+
     virtual_audio_detected: bool
     recommended_device_available: bool
     detected_devices: List[Dict[str, Any]]
@@ -186,6 +212,7 @@ class SetupStatusResponse(BaseModel):
 
 class SetupCompleteRequest(BaseModel):
     """Request to mark setup as complete."""
+
     skipped: bool = False
 
 
@@ -215,29 +242,28 @@ class StartRecordingRequest(BaseModel):
     - Custom validators for complex rules
     - Immutable after creation (frozen)
     """
+
     device: str = Field(
         ...,
         min_length=1,
         max_length=256,
-        description="Audio device name from /api/devices"
+        description="Audio device name from /api/devices",
     )
     ticket_id: Optional[str] = Field(
-        None,
-        max_length=50,
-        description="Optional ticket/case ID for the recording"
+        None, max_length=50, description="Optional ticket/case ID for the recording"
     )
 
-    @field_validator('device')
+    @field_validator("device")
     @classmethod
     def validate_device_name(cls, v: str) -> str:
         """Validate device name doesn't contain suspicious characters."""
         # Allow alphanumeric, spaces, parentheses, hyphens, underscores
         # This prevents command injection via device name
-        if not re.match(r'^[\w\s\(\)\-\.\,\'\"]+$', v, re.UNICODE):
-            raise ValueError('Device name contains invalid characters')
+        if not re.match(r"^[\w\s\(\)\-\.\,\'\"]+$", v, re.UNICODE):
+            raise ValueError("Device name contains invalid characters")
         return v.strip()
 
-    @field_validator('ticket_id')
+    @field_validator("ticket_id")
     @classmethod
     def validate_ticket_id(cls, v: Optional[str]) -> Optional[str]:
         """Validate ticket ID format with path traversal protection."""
@@ -250,7 +276,7 @@ class StartRecordingRequest(BaseModel):
         try:
             return sanitize_path_component(v, max_length=50)
         except ValueError as e:
-            raise ValueError(f'Invalid ticket ID: {e}')
+            raise ValueError(f"Invalid ticket ID: {e}")
 
     model_config = {
         "frozen": True,  # Immutable after creation
@@ -279,11 +305,9 @@ class RecordingInfo(BaseModel):
 
 class UpdateTranscriptRequest(BaseModel):
     """Request model for updating a transcript."""
+
     text: str = Field(
-        ...,
-        min_length=0,
-        max_length=500000,
-        description="The updated transcript text"
+        ..., min_length=0, max_length=500000, description="The updated transcript text"
     )
 
 
@@ -292,6 +316,7 @@ class RecordingsResponse(BaseModel):
 
 
 # Routes
+
 
 @router.get("/health", response_model=HealthResponse)
 async def health_check():
@@ -307,7 +332,7 @@ async def health_check():
         mode="offline",
         network_guard="enabled" if is_guard_enabled() else "disabled",
         external_api_calls="none",
-        transcription_engine="whisper.cpp (local)"
+        transcription_engine="whisper.cpp (local)",
     )
 
 
@@ -327,63 +352,75 @@ async def readiness_check():
     # Check FFmpeg
     ffmpeg_path = get_ffmpeg_path()
     ffmpeg_ready = ffmpeg_path.exists() or shutil.which("ffmpeg") is not None
-    checks.append(ReadinessCheck(
-        name="ffmpeg",
-        ready=ffmpeg_ready,
-        details=str(ffmpeg_path) if ffmpeg_ready else "FFmpeg not found"
-    ))
+    checks.append(
+        ReadinessCheck(
+            name="ffmpeg",
+            ready=ffmpeg_ready,
+            details=str(ffmpeg_path) if ffmpeg_ready else "FFmpeg not found",
+        )
+    )
 
     # Check Whisper
     whisper_path = get_whisper_path()
     whisper_ready = whisper_path.exists() or shutil.which("whisper-cli") is not None
-    checks.append(ReadinessCheck(
-        name="whisper",
-        ready=whisper_ready,
-        details=str(whisper_path) if whisper_ready else "Whisper not found"
-    ))
+    checks.append(
+        ReadinessCheck(
+            name="whisper",
+            ready=whisper_ready,
+            details=str(whisper_path) if whisper_ready else "Whisper not found",
+        )
+    )
 
     # Check disk space (require at least 1GB free)
     output_dir = get_output_dir()
     try:
         disk_usage = shutil.disk_usage(output_dir)
-        free_gb = disk_usage.free / (1024 ** 3)
+        free_gb = disk_usage.free / (1024**3)
         disk_ready = free_gb >= 1.0
-        checks.append(ReadinessCheck(
-            name="disk_space",
-            ready=disk_ready,
-            details=f"{free_gb:.2f} GB free"
-        ))
+        checks.append(
+            ReadinessCheck(
+                name="disk_space", ready=disk_ready, details=f"{free_gb:.2f} GB free"
+            )
+        )
     except Exception as e:
-        checks.append(ReadinessCheck(
-            name="disk_space",
-            ready=False,
-            details=str(e)
-        ))
+        checks.append(ReadinessCheck(name="disk_space", ready=False, details=str(e)))
 
     # Check application state
     state_ready = app_state.state != AppState.ERROR
-    checks.append(ReadinessCheck(
-        name="app_state",
-        ready=state_ready,
-        details=app_state.state.value
-    ))
+    checks.append(
+        ReadinessCheck(
+            name="app_state", ready=state_ready, details=app_state.state.value
+        )
+    )
 
     # Check bulkhead executor health
     executor = get_executor()
     bulkhead_healthy = executor.is_healthy()
-    checks.append(ReadinessCheck(
-        name="bulkhead",
-        ready=bulkhead_healthy,
-        details="All pools healthy" if bulkhead_healthy else "One or more pools overloaded"
-    ))
+    checks.append(
+        ReadinessCheck(
+            name="bulkhead",
+            ready=bulkhead_healthy,
+            details=(
+                "All pools healthy"
+                if bulkhead_healthy
+                else "One or more pools overloaded"
+            ),
+        )
+    )
 
     # Check network guard (should be enabled for enterprise deployment)
     network_guard_enabled = is_guard_enabled()
-    checks.append(ReadinessCheck(
-        name="network_guard",
-        ready=network_guard_enabled,
-        details="External connections blocked" if network_guard_enabled else "WARNING: External connections allowed"
-    ))
+    checks.append(
+        ReadinessCheck(
+            name="network_guard",
+            ready=network_guard_enabled,
+            details=(
+                "External connections blocked"
+                if network_guard_enabled
+                else "WARNING: External connections allowed"
+            ),
+        )
+    )
 
     all_ready = all(check.ready for check in checks)
 
@@ -411,30 +448,24 @@ async def detailed_health_check(device: Optional[str] = None):
         ffmpeg_path=str(get_ffmpeg_path()),
         models_dir=get_models_dir(),
         min_disk_gb=1.0,
-        min_memory_mb=500.0
+        min_memory_mb=500.0,
     )
 
     # Run all health checks
     status = await checker.run_all_checks(
-        device_name=device,
-        recordings_dir=get_output_dir()
+        device_name=device, recordings_dir=get_output_dir()
     )
 
     # Convert to response model
     checks = [
         DetailedHealthCheck(
-            name=c.name,
-            healthy=c.healthy,
-            message=c.message,
-            details=c.details
+            name=c.name, healthy=c.healthy, message=c.message, details=c.details
         )
         for c in status.checks
     ]
 
     return DetailedHealthResponse(
-        healthy=status.healthy,
-        checks=checks,
-        timestamp=status.timestamp
+        healthy=status.healthy, checks=checks, timestamp=status.timestamp
     )
 
 
@@ -460,7 +491,7 @@ async def get_incomplete_jobs():
             device_name=j.device_name,
             ticket_id=j.ticket_id,
             created_at=j.created_at,
-            updated_at=j.updated_at
+            updated_at=j.updated_at,
         )
         for j in incomplete
     ]
@@ -490,7 +521,7 @@ async def resume_job(job_id: str, background_tasks: BackgroundTasks):
     if not audio_path.exists():
         raise HTTPException(
             status_code=404,
-            detail="Audio file no longer exists. Job cannot be resumed."
+            detail="Audio file no longer exists. Job cannot be resumed.",
         )
 
     # Check app state - can't resume if already busy
@@ -500,23 +531,20 @@ async def resume_job(job_id: str, background_tasks: BackgroundTasks):
         raise HTTPException(status_code=400, detail="Another job is processing")
 
     # Queue background task to resume transcription
-    background_tasks.add_task(
-        resume_transcription,
-        checkpoint=checkpoint
-    )
+    background_tasks.add_task(resume_transcription, checkpoint=checkpoint)
 
     logger.info(
         "job_resume_started",
         job_id=job_id,
         from_chunk=checkpoint.chunks_completed,
-        total_chunks=checkpoint.total_chunks
+        total_chunks=checkpoint.total_chunks,
     )
 
     return {
         "status": "resume_started",
         "job_id": job_id,
         "from_chunk": checkpoint.chunks_completed,
-        "total_chunks": checkpoint.total_chunks
+        "total_chunks": checkpoint.total_chunks,
     }
 
 
@@ -556,11 +584,11 @@ async def get_job_history(limit: int = 50):
                 "total_chunks": j.total_chunks,
                 "ticket_id": j.ticket_id,
                 "created_at": j.created_at,
-                "updated_at": j.updated_at
+                "updated_at": j.updated_at,
             }
             for j in history
         ],
-        "count": len(history)
+        "count": len(history),
     }
 
 
@@ -588,10 +616,10 @@ async def get_transcription_summary():
                 total_processing_seconds=round(d.total_processing_seconds, 2),
                 success_count=d.success_count,
                 failure_count=d.failure_count,
-                success_rate=round(d.success_rate, 4)
+                success_rate=round(d.success_rate, 4),
             )
             for d in summary.last_7_days
-        ]
+        ],
     )
 
 
@@ -610,18 +638,20 @@ async def get_recent_transcriptions(limit: int = 50):
             {
                 "job_id": m.job_id,
                 "audio_duration_seconds": round(m.audio_duration_seconds, 2),
-                "transcription_duration_seconds": round(m.transcription_duration_seconds, 2),
+                "transcription_duration_seconds": round(
+                    m.transcription_duration_seconds, 2
+                ),
                 "processing_speed": round(m.processing_speed, 2),
                 "model_used": m.model_used,
                 "success": m.success,
                 "error_message": m.error_message,
                 "device_name": m.device_name,
                 "ticket_id": m.ticket_id,
-                "timestamp": m.timestamp
+                "timestamp": m.timestamp,
             }
             for m in recent
         ],
-        "count": len(recent)
+        "count": len(recent),
     }
 
 
@@ -637,7 +667,7 @@ async def export_transcription_metrics():
     store = get_transcription_store()
 
     # Create temp file for CSV
-    with NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+    with NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
         temp_path = Path(f.name)
 
     count = store.export_csv(temp_path)
@@ -649,7 +679,7 @@ async def export_transcription_metrics():
     return FileResponse(
         temp_path,
         filename=f"transcription_metrics_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-        media_type="text/csv"
+        media_type="text/csv",
     )
 
 
@@ -718,11 +748,15 @@ async def get_metrics():
         bulkhead_pools=get_executor().get_all_metrics(),
         cache=get_cache().get_stats(),
         active_recording=app_state.state == AppState.RECORDING,
-        completed_recordings_count=len(app_state.completed_recordings)
+        completed_recordings_count=len(app_state.completed_recordings),
     )
 
 
-@router.get("/debug/state", response_model=DebugStateResponse, dependencies=[Depends(require_debug_enabled)])
+@router.get(
+    "/debug/state",
+    response_model=DebugStateResponse,
+    dependencies=[Depends(require_debug_enabled)],
+)
 async def debug_state():
     """
     Get detailed application state for debugging.
@@ -736,7 +770,9 @@ async def debug_state():
             "id": session.id,
             "device_name": session.device_name,
             "ticket_id": session.ticket_id,
-            "start_time": session.start_time.isoformat() if session.start_time else None,
+            "start_time": (
+                session.start_time.isoformat() if session.start_time else None
+            ),
             "end_time": session.end_time.isoformat() if session.end_time else None,
             "output_folder": session.output_folder,
         }
@@ -747,7 +783,7 @@ async def debug_state():
         current_session=current_session,
         completed_recordings_count=len(app_state.completed_recordings),
         circuit_breakers=process_orchestrator.get_circuit_status(),
-        metrics_summary=metrics.get_all_metrics()
+        metrics_summary=metrics.get_all_metrics(),
     )
 
 
@@ -772,10 +808,7 @@ async def reset_circuits():
 async def get_cache_stats():
     """Get transcription cache statistics."""
     cache = get_cache()
-    return {
-        "request_id": get_request_id(),
-        "cache": cache.get_stats()
-    }
+    return {"request_id": get_request_id(), "cache": cache.get_stats()}
 
 
 @router.post("/debug/cache/clear", dependencies=[Depends(require_debug_enabled)])
@@ -797,7 +830,7 @@ async def get_capabilities():
         "types": {
             cap_type: registry.get_capability_info(cap_type)
             for cap_type in registry.get_all_types()
-        }
+        },
     }
 
 
@@ -814,7 +847,7 @@ async def get_network_status():
         "cloud_dependencies": [],
         "external_api_calls": "none",
         "transcription_engine": "whisper.cpp (local)",
-        "offline_verified": is_guard_enabled()
+        "offline_verified": is_guard_enabled(),
     }
 
 
@@ -827,10 +860,7 @@ async def get_paths():
     and data directory paths.
     """
     path_info = get_path_info()
-    return {
-        "request_id": get_request_id(),
-        **path_info
-    }
+    return {"request_id": get_request_id(), **path_info}
 
 
 @router.get("/devices", response_model=DevicesResponse)
@@ -842,11 +872,13 @@ async def get_devices():
     device_list = []
     for name in devices:
         status = get_device_status(name, settings.device_guard)
-        device_list.append(DeviceInfo(
-            name=name,
-            safe=status["safe"],
-            reason=status.get("reason"),
-        ))
+        device_list.append(
+            DeviceInfo(
+                name=name,
+                safe=status["safe"],
+                reason=status.get("reason"),
+            )
+        )
 
     return DevicesResponse(devices=device_list)
 
@@ -860,8 +892,7 @@ async def get_state():
 
 @router.post("/recording/start", response_model=StartRecordingResponse)
 async def start_recording_endpoint(
-    request: StartRecordingRequest,
-    background_tasks: BackgroundTasks
+    request: StartRecordingRequest, background_tasks: BackgroundTasks
 ):
     """Start a new recording."""
     settings = get_settings()
@@ -879,12 +910,14 @@ async def start_recording_endpoint(
         if not status["safe"]:
             raise HTTPException(
                 status_code=403,
-                detail=f"Device blocked: {status.get('reason', 'Not on allowlist')}"
+                detail=f"Device blocked: {status.get('reason', 'Not on allowlist')}",
             )
 
     # Generate recording ID
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    recording_id = f"{timestamp}_{request.ticket_id}" if request.ticket_id else timestamp
+    recording_id = (
+        f"{timestamp}_{request.ticket_id}" if request.ticket_id else timestamp
+    )
 
     # Create session
     session = RecordingSession(
@@ -1012,8 +1045,7 @@ async def resume_transcription(checkpoint: JobCheckpoint):
     try:
         # Set app state to processing
         await app_state.processing_progress(
-            5,
-            f"Resuming job from chunk {checkpoint.chunks_completed + 1}"
+            5, f"Resuming job from chunk {checkpoint.chunks_completed + 1}"
         )
 
         # Progress callback for UI updates
@@ -1037,6 +1069,7 @@ async def resume_transcription(checkpoint: JobCheckpoint):
         duration = 0.0
         try:
             from ..services.transcriber import get_audio_duration_seconds
+
             audio_path = output_folder / "audio_16k.wav"
             if audio_path.exists():
                 duration = await get_audio_duration_seconds(audio_path)
@@ -1044,9 +1077,9 @@ async def resume_transcription(checkpoint: JobCheckpoint):
             logger.warning(
                 "duration_detection_failed",
                 job_id=checkpoint.job_id,
-                audio_path=str(audio_path) if 'audio_path' in dir() else None,
+                audio_path=str(audio_path) if "audio_path" in dir() else None,
                 error=str(e),
-                error_type=type(e).__name__
+                error_type=type(e).__name__,
             )
 
         # Create bundle if enabled
@@ -1091,14 +1124,12 @@ async def resume_transcription(checkpoint: JobCheckpoint):
         logger.info(
             "resume_transcription_complete",
             job_id=checkpoint.job_id,
-            duration_seconds=duration
+            duration_seconds=duration,
         )
 
     except Exception as e:
         logger.error(
-            "resume_transcription_failed",
-            job_id=checkpoint.job_id,
-            error=str(e)
+            "resume_transcription_failed", job_id=checkpoint.job_id, error=str(e)
         )
         store.mark_failed(checkpoint.job_id, str(e))
         await app_state.set_error(f"Resume failed: {str(e)}")
@@ -1123,6 +1154,7 @@ async def list_recordings():
 
 class SearchRecordingsResponse(BaseModel):
     """Response for recordings search."""
+
     recordings: List[RecordingInfo]
     total: int
     page: int
@@ -1130,7 +1162,9 @@ class SearchRecordingsResponse(BaseModel):
     total_pages: int
 
 
-@router.get("/recordings/search", response_model=SearchRecordingsResponse, tags=["recordings"])
+@router.get(
+    "/recordings/search", response_model=SearchRecordingsResponse, tags=["recordings"]
+)
 async def search_recordings(
     query: Optional[str] = None,
     date_from: Optional[str] = None,
@@ -1201,7 +1235,11 @@ async def search_recordings(
 
     if ticket_prefix:
         prefix_lower = ticket_prefix.lower()
-        results = [r for r in results if r.ticket_id and r.ticket_id.lower().startswith(prefix_lower)]
+        results = [
+            r
+            for r in results
+            if r.ticket_id and r.ticket_id.lower().startswith(prefix_lower)
+        ]
 
     # Sort results
     if sort == "oldest":
@@ -1249,8 +1287,7 @@ async def download_bundle(recording_id: str):
     """Download the VTB bundle for a recording."""
     # Find recording
     recording = next(
-        (r for r in app_state.completed_recordings if r.id == recording_id),
-        None
+        (r for r in app_state.completed_recordings if r.id == recording_id), None
     )
 
     if not recording:
@@ -1275,8 +1312,7 @@ async def get_transcript(recording_id: str):
     """Get transcript text for a recording."""
     # Find recording
     recording = next(
-        (r for r in app_state.completed_recordings if r.id == recording_id),
-        None
+        (r for r in app_state.completed_recordings if r.id == recording_id), None
     )
 
     if not recording:
@@ -1328,8 +1364,7 @@ async def update_transcript(recording_id: str, request: UpdateTranscriptRequest)
     """
     # Find recording
     recording = next(
-        (r for r in app_state.completed_recordings if r.id == recording_id),
-        None
+        (r for r in app_state.completed_recordings if r.id == recording_id), None
     )
 
     if not recording:
@@ -1349,22 +1384,18 @@ async def update_transcript(recording_id: str, request: UpdateTranscriptRequest)
         transcript_txt.write_text(request.text, encoding="utf-8")
     except Exception as e:
         logger.error(
-            "transcript_update_failed",
-            recording_id=recording_id,
-            error=str(e)
+            "transcript_update_failed", recording_id=recording_id, error=str(e)
         )
-        raise HTTPException(status_code=500, detail=f"Failed to save transcript: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to save transcript: {str(e)}"
+        )
 
     # Update the in-memory transcript preview
     recording.transcript_preview = request.text[:500] if request.text else None
 
     word_count = len(request.text.split()) if request.text else 0
 
-    logger.info(
-        "transcript_updated",
-        recording_id=recording_id,
-        word_count=word_count
-    )
+    logger.info("transcript_updated", recording_id=recording_id, word_count=word_count)
 
     return {
         "status": "ok",
@@ -1400,13 +1431,12 @@ async def export_transcript(recording_id: str, format: str):
     if format not in EXPORT_FORMATS:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported format: {format}. Supported: {', '.join(sorted(EXPORT_FORMATS))}"
+            detail=f"Unsupported format: {format}. Supported: {', '.join(sorted(EXPORT_FORMATS))}",
         )
 
     # Find recording
     recording = next(
-        (r for r in app_state.completed_recordings if r.id == recording_id),
-        None
+        (r for r in app_state.completed_recordings if r.id == recording_id), None
     )
     if not recording:
         raise HTTPException(status_code=404, detail="Recording not found")
@@ -1416,6 +1446,7 @@ async def export_transcript(recording_id: str, format: str):
         raise HTTPException(status_code=404, detail="Recording files not found")
 
     from ..services.exporter import get_exporter
+
     exporter = get_exporter(output_folder)
 
     # Export based on format
@@ -1441,14 +1472,11 @@ async def export_transcript(recording_id: str, format: str):
         logger.error("export_missing_dependency", format=format, error=str(e))
         raise HTTPException(
             status_code=501,
-            detail=f"Export format '{format}' requires additional dependencies: {str(e)}"
+            detail=f"Export format '{format}' requires additional dependencies: {str(e)}",
         )
     except Exception as e:
         logger.error(
-            "export_failed",
-            recording_id=recording_id,
-            format=format,
-            error=str(e)
+            "export_failed", recording_id=recording_id, format=format, error=str(e)
         )
         raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
 
@@ -1456,7 +1484,7 @@ async def export_transcript(recording_id: str, format: str):
         "export_completed",
         recording_id=recording_id,
         format=format,
-        path=str(export_path)
+        path=str(export_path),
     )
 
     return FileResponse(
@@ -1475,8 +1503,7 @@ async def get_export_formats(recording_id: str):
     """
     # Verify recording exists
     recording = next(
-        (r for r in app_state.completed_recordings if r.id == recording_id),
-        None
+        (r for r in app_state.completed_recordings if r.id == recording_id), None
     )
     if not recording:
         raise HTTPException(status_code=404, detail="Recording not found")
@@ -1512,6 +1539,7 @@ async def open_recording_folder(recording_id: str):
 
     # Platform-specific folder opening
     import sys
+
     if sys.platform == "linux":
         subprocess.Popen(["xdg-open", str(folder_path)])
     elif sys.platform == "darwin":
@@ -1526,28 +1554,36 @@ async def open_recording_folder(recording_id: str):
 # File Upload Constants
 MAX_UPLOAD_SIZE = 500 * 1024 * 1024  # 500MB
 ALLOWED_AUDIO_TYPES = {
-    'audio/wav', 'audio/x-wav', 'audio/wave',
-    'audio/mpeg', 'audio/mp3',
-    'audio/ogg', 'audio/opus',
-    'audio/mp4', 'audio/m4a', 'audio/x-m4a',
-    'audio/flac', 'audio/x-flac',
-    'audio/webm',
+    "audio/wav",
+    "audio/x-wav",
+    "audio/wave",
+    "audio/mpeg",
+    "audio/mp3",
+    "audio/ogg",
+    "audio/opus",
+    "audio/mp4",
+    "audio/m4a",
+    "audio/x-m4a",
+    "audio/flac",
+    "audio/x-flac",
+    "audio/webm",
 }
 # File extension to MIME type mapping (fallback when MIME is generic)
 ALLOWED_EXTENSIONS = {
-    '.wav': 'audio/wav',
-    '.mp3': 'audio/mpeg',
-    '.ogg': 'audio/ogg',
-    '.opus': 'audio/opus',
-    '.m4a': 'audio/mp4',
-    '.mp4': 'audio/mp4',
-    '.flac': 'audio/flac',
-    '.webm': 'audio/webm',
+    ".wav": "audio/wav",
+    ".mp3": "audio/mpeg",
+    ".ogg": "audio/ogg",
+    ".opus": "audio/opus",
+    ".m4a": "audio/mp4",
+    ".mp4": "audio/mp4",
+    ".flac": "audio/flac",
+    ".webm": "audio/webm",
 }
 
 
 class UploadResponse(BaseModel):
     """Response for file upload."""
+
     recording_id: str
     status: str
     message: str
@@ -1555,6 +1591,7 @@ class UploadResponse(BaseModel):
 
 class BatchUploadResponse(BaseModel):
     """Response for batch file upload."""
+
     status: str
     jobs_queued: int
     job_ids: List[str]
@@ -1562,6 +1599,7 @@ class BatchUploadResponse(BaseModel):
 
 class QueueJobInfo(BaseModel):
     """Information about a queued job."""
+
     job_id: str
     original_filename: str
     ticket_id: Optional[str]
@@ -1576,6 +1614,7 @@ class QueueJobInfo(BaseModel):
 
 class QueueStatusResponse(BaseModel):
     """Response for queue status."""
+
     queued: List[QueueJobInfo]
     processing: Optional[QueueJobInfo]
     completed: List[QueueJobInfo]
@@ -1585,6 +1624,7 @@ class QueueStatusResponse(BaseModel):
 
 class FolderScanResponse(BaseModel):
     """Response for folder scan."""
+
     total_files: int
     total_size_mb: float
     extensions: Dict[str, Dict[str, Any]]
@@ -1618,18 +1658,20 @@ async def upload_audio_file(
     ext = Path(filename).suffix.lower()
 
     # If MIME type is generic or unknown, use file extension
-    if content_type in (None, '', 'application/octet-stream', 'binary/octet-stream'):
+    if content_type in (None, "", "application/octet-stream", "binary/octet-stream"):
         if ext in ALLOWED_EXTENSIONS:
             content_type = ALLOWED_EXTENSIONS[ext]
         else:
             raise HTTPException(
                 status_code=400,
-                detail=f"Unsupported file extension: {ext}. Supported: WAV, MP3, OGG, M4A, FLAC"
+                detail=f"Unsupported file extension: {ext}. Supported: WAV, MP3, OGG, M4A, FLAC",
             )
-    elif content_type not in ALLOWED_AUDIO_TYPES and not content_type.startswith('audio/'):
+    elif content_type not in ALLOWED_AUDIO_TYPES and not content_type.startswith(
+        "audio/"
+    ):
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported audio format: {content_type}. Supported: WAV, MP3, OGG, M4A, FLAC"
+            detail=f"Unsupported audio format: {content_type}. Supported: WAV, MP3, OGG, M4A, FLAC",
         )
 
     # Read file and check size
@@ -1637,7 +1679,7 @@ async def upload_audio_file(
     if len(contents) > MAX_UPLOAD_SIZE:
         raise HTTPException(
             status_code=400,
-            detail=f"File too large. Maximum size is {MAX_UPLOAD_SIZE // 1024 // 1024}MB"
+            detail=f"File too large. Maximum size is {MAX_UPLOAD_SIZE // 1024 // 1024}MB",
         )
 
     if len(contents) == 0:
@@ -1652,7 +1694,7 @@ async def upload_audio_file(
             logger.warning("invalid_ticket_id", ticket_id=ticket_id, error=str(e))
             raise HTTPException(
                 status_code=400,
-                detail="Invalid ticket ID: contains disallowed characters"
+                detail="Invalid ticket ID: contains disallowed characters",
             )
 
     # Check if busy
@@ -1676,13 +1718,13 @@ async def upload_audio_file(
     output_folder.mkdir(parents=True, exist_ok=True)
 
     # Determine extension from original filename
-    original_ext = Path(file.filename).suffix.lower() if file.filename else '.wav'
+    original_ext = Path(file.filename).suffix.lower() if file.filename else ".wav"
     if not original_ext:
-        original_ext = '.wav'
+        original_ext = ".wav"
 
     # Save uploaded file
     raw_audio_path = output_folder / f"audio_raw{original_ext}"
-    async with aiofiles.open(raw_audio_path, 'wb') as f:
+    async with aiofiles.open(raw_audio_path, "wb") as f:
         await f.write(contents)
 
     logger.info(
@@ -1743,7 +1785,7 @@ async def process_uploaded_file(
         # The normalizer expects audio_raw.wav in the output folder
         # Copy/rename if needed
         expected_raw = output_folder / "audio_raw.wav"
-        if audio_path != expected_raw and audio_path.suffix.lower() != '.wav':
+        if audio_path != expected_raw and audio_path.suffix.lower() != ".wav":
             # FFmpeg will handle conversion during normalization
             pass
 
@@ -1770,6 +1812,7 @@ async def process_uploaded_file(
         duration = 0.0
         try:
             from ..services.normalizer import get_audio_duration
+
             duration = get_audio_duration(normalized_path)
         except Exception as e:
             logger.warning(
@@ -1777,7 +1820,7 @@ async def process_uploaded_file(
                 recording_id=recording_id,
                 audio_path=str(normalized_path),
                 error=str(e),
-                error_type=type(e).__name__
+                error_type=type(e).__name__,
             )
             # Fallback: estimate from file size (16-bit PCM, 16kHz mono)
             try:
@@ -1845,6 +1888,7 @@ async def process_uploaded_file(
 # Batch Processing Endpoints
 # ============================================================================
 
+
 async def save_upload_to_temp(file: UploadFile) -> Path:
     """Save an uploaded file to a temporary location."""
     temp_dir = get_data_dir() / "temp_uploads"
@@ -1853,12 +1897,12 @@ async def save_upload_to_temp(file: UploadFile) -> Path:
     # Generate unique filename
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     short_uuid = uuid.uuid4().hex[:6]
-    ext = Path(file.filename).suffix.lower() if file.filename else '.wav'
+    ext = Path(file.filename).suffix.lower() if file.filename else ".wav"
     temp_path = temp_dir / f"batch_{timestamp}_{short_uuid}{ext}"
 
     # Save file
     contents = await file.read()
-    async with aiofiles.open(temp_path, 'wb') as f:
+    async with aiofiles.open(temp_path, "wb") as f:
         await f.write(contents)
 
     return temp_path
@@ -1919,6 +1963,7 @@ async def process_queued_job(job: QueuedJob):
     duration = 0.0
     try:
         from ..services.normalizer import get_audio_duration
+
         duration = get_audio_duration(normalized_path)
     except Exception as e:
         logger.warning(
@@ -1926,7 +1971,7 @@ async def process_queued_job(job: QueuedJob):
             job_id=job.job_id,
             audio_path=str(normalized_path),
             error=str(e),
-            error_type=type(e).__name__
+            error_type=type(e).__name__,
         )
 
     # Step 4: Create bundle
@@ -1969,18 +2014,21 @@ async def process_queued_job(job: QueuedJob):
 
     # Broadcast completion via WebSocket
     from .websocket import broadcast_state
-    await broadcast_state({
-        "type": "recording_complete",
-        "recording": {
-            "id": completed.id,
-            "ticket_id": completed.ticket_id,
-            "created_at": completed.created_at.isoformat(),
-            "duration_seconds": completed.duration_seconds,
-            "output_folder": completed.output_folder,
-            "bundle_path": completed.bundle_path,
-            "transcript_preview": completed.transcript_preview,
+
+    await broadcast_state(
+        {
+            "type": "recording_complete",
+            "recording": {
+                "id": completed.id,
+                "ticket_id": completed.ticket_id,
+                "created_at": completed.created_at.isoformat(),
+                "duration_seconds": completed.duration_seconds,
+                "output_folder": completed.output_folder,
+                "bundle_path": completed.bundle_path,
+                "transcript_preview": completed.transcript_preview,
+            },
         }
-    })
+    )
 
     # Cleanup temp file
     if job.audio_path.exists():
@@ -1996,7 +2044,11 @@ async def process_queued_job(job: QueuedJob):
     )
 
 
-@router.post("/recordings/batch-upload", response_model=BatchUploadResponse, tags=["transcription"])
+@router.post(
+    "/recordings/batch-upload",
+    response_model=BatchUploadResponse,
+    tags=["transcription"],
+)
 async def batch_upload(
     files: List[UploadFile] = File(...),
     ticket_prefix: Optional[str] = Form(None),
@@ -2016,16 +2068,10 @@ async def batch_upload(
     """
     # Limit batch size
     if len(files) > 20:
-        raise HTTPException(
-            status_code=400,
-            detail="Maximum 20 files per batch upload"
-        )
+        raise HTTPException(status_code=400, detail="Maximum 20 files per batch upload")
 
     if len(files) == 0:
-        raise HTTPException(
-            status_code=400,
-            detail="No files provided"
-        )
+        raise HTTPException(status_code=400, detail="No files provided")
 
     # Validate and sanitize ticket_prefix if provided
     if ticket_prefix:
@@ -2033,10 +2079,12 @@ async def batch_upload(
         try:
             ticket_prefix = sanitize_path_component(ticket_prefix, max_length=50)
         except ValueError as e:
-            logger.warning("invalid_ticket_prefix", ticket_prefix=ticket_prefix, error=str(e))
+            logger.warning(
+                "invalid_ticket_prefix", ticket_prefix=ticket_prefix, error=str(e)
+            )
             raise HTTPException(
                 status_code=400,
-                detail="Invalid ticket prefix: contains disallowed characters"
+                detail="Invalid ticket prefix: contains disallowed characters",
             )
 
     queue = get_job_queue()
@@ -2048,19 +2096,26 @@ async def batch_upload(
         filename = file.filename or ""
         ext = Path(filename).suffix.lower()
 
-        if content_type in (None, '', 'application/octet-stream', 'binary/octet-stream'):
+        if content_type in (
+            None,
+            "",
+            "application/octet-stream",
+            "binary/octet-stream",
+        ):
             if ext not in ALLOWED_EXTENSIONS:
                 logger.warning(
                     "batch_file_skipped",
                     filename=filename,
-                    reason="unsupported_extension"
+                    reason="unsupported_extension",
                 )
                 continue
-        elif content_type not in ALLOWED_AUDIO_TYPES and not content_type.startswith('audio/'):
+        elif content_type not in ALLOWED_AUDIO_TYPES and not content_type.startswith(
+            "audio/"
+        ):
             logger.warning(
                 "batch_file_skipped",
                 filename=filename,
-                reason="unsupported_content_type"
+                reason="unsupported_content_type",
             )
             continue
 
@@ -2078,10 +2133,7 @@ async def batch_upload(
         job_ids.append(job_id)
 
     if not job_ids:
-        raise HTTPException(
-            status_code=400,
-            detail="No valid audio files in upload"
-        )
+        raise HTTPException(status_code=400, detail="No valid audio files in upload")
 
     # Ensure worker is running
     if not queue.is_worker_running():
@@ -2139,8 +2191,7 @@ async def cancel_queued_job(job_id: str):
     status = queue.get_status()
     if status["processing"] and status["processing"]["job_id"] == job_id:
         raise HTTPException(
-            status_code=400,
-            detail="Cannot cancel job that is currently processing"
+            status_code=400, detail="Cannot cancel job that is currently processing"
         )
 
     raise HTTPException(status_code=404, detail="Job not found in queue")
@@ -2158,7 +2209,9 @@ async def clear_queue_history():
     return {"status": "ok", "message": "Queue history cleared"}
 
 
-@router.post("/queue/scan-folder", response_model=FolderScanResponse, tags=["transcription"])
+@router.post(
+    "/queue/scan-folder", response_model=FolderScanResponse, tags=["transcription"]
+)
 async def scan_audio_folder(
     folder_path: str = Form(...),
     recursive: bool = Form(False),
@@ -2191,7 +2244,9 @@ async def scan_audio_folder(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/queue/import-folder", response_model=BatchUploadResponse, tags=["transcription"])
+@router.post(
+    "/queue/import-folder", response_model=BatchUploadResponse, tags=["transcription"]
+)
 async def import_folder(
     folder_path: str = Form(...),
     recursive: bool = Form(False),
@@ -2222,10 +2277,12 @@ async def import_folder(
         try:
             ticket_prefix = sanitize_path_component(ticket_prefix, max_length=50)
         except ValueError as e:
-            logger.warning("invalid_ticket_prefix", ticket_prefix=ticket_prefix, error=str(e))
+            logger.warning(
+                "invalid_ticket_prefix", ticket_prefix=ticket_prefix, error=str(e)
+            )
             raise HTTPException(
                 status_code=400,
-                detail="Invalid ticket prefix: contains disallowed characters"
+                detail="Invalid ticket prefix: contains disallowed characters",
             )
 
     try:
@@ -2234,16 +2291,13 @@ async def import_folder(
         raise HTTPException(status_code=500, detail=str(e))
 
     if not audio_files:
-        raise HTTPException(
-            status_code=404,
-            detail="No audio files found in folder"
-        )
+        raise HTTPException(status_code=404, detail="No audio files found in folder")
 
     # Limit to 100 files per import
     if len(audio_files) > 100:
         raise HTTPException(
             status_code=400,
-            detail=f"Too many files ({len(audio_files)}). Maximum 100 files per import."
+            detail=f"Too many files ({len(audio_files)}). Maximum 100 files per import.",
         )
 
     queue = get_job_queue()
@@ -2281,8 +2335,10 @@ async def import_folder(
 # Call Detection Endpoints (Windows only)
 # ============================================================================
 
+
 class CallDetectionStatusResponse(BaseModel):
     """Call detection status response."""
+
     enabled: bool
     state: str
     current_call: Optional[Dict[str, Any]] = None
@@ -2293,27 +2349,28 @@ class CallDetectionStatusResponse(BaseModel):
 
 class CallDetectionConfigRequest(BaseModel):
     """Request to update call detection configuration."""
+
     enabled: bool = Field(..., description="Enable or disable call detection")
     target_processes: List[str] = Field(
-        default=["CiscoJabber.exe"],
-        description="Process names to monitor"
+        default=["CiscoJabber.exe"], description="Process names to monitor"
     )
     call_start_confirm_seconds: float = Field(
         default=1.0,
         ge=0.1,
         le=10.0,
-        description="Seconds to wait before confirming call start"
+        description="Seconds to wait before confirming call start",
     )
     call_end_confirm_seconds: float = Field(
         default=2.0,
         ge=0.1,
         le=30.0,
-        description="Seconds to wait before confirming call end"
+        description="Seconds to wait before confirming call end",
     )
 
 
 class AudioSessionInfo(BaseModel):
     """Information about an active audio session."""
+
     process_name: str
     process_id: int
     state: str
@@ -2322,11 +2379,16 @@ class AudioSessionInfo(BaseModel):
 
 class ProcessInfo(BaseModel):
     """Information about a running process."""
+
     name: str
     pids: List[int]
 
 
-@router.get("/call-detection/status", response_model=CallDetectionStatusResponse, tags=["call-detection"])
+@router.get(
+    "/call-detection/status",
+    response_model=CallDetectionStatusResponse,
+    tags=["call-detection"],
+)
 async def get_call_detection_status():
     """
     Get current call detection status.
@@ -2342,11 +2404,12 @@ async def get_call_detection_status():
             state="unsupported",
             platform_supported=False,
             monitors={},
-            config=None
+            config=None,
         )
 
     try:
         from ..services.call_detector import get_call_detector
+
         detector = get_call_detector()
         status = detector.get_status()
 
@@ -2356,7 +2419,7 @@ async def get_call_detection_status():
             current_call=status["current_call"],
             monitors=status["monitors"],
             config=status["config"],
-            platform_supported=True
+            platform_supported=True,
         )
     except ImportError as e:
         logger.warning("call_detection_import_error", error=str(e))
@@ -2365,7 +2428,7 @@ async def get_call_detection_status():
             state="unavailable",
             platform_supported=True,
             monitors={},
-            config=None
+            config=None,
         )
 
 
@@ -2387,8 +2450,7 @@ async def enable_call_detection(config: Optional[CallDetectionConfigRequest] = N
 
     if sys.platform != "win32":
         raise HTTPException(
-            status_code=501,
-            detail="Call detection is only available on Windows"
+            status_code=501, detail="Call detection is only available on Windows"
         )
 
     try:
@@ -2415,10 +2477,7 @@ async def enable_call_detection(config: Optional[CallDetectionConfigRequest] = N
 
         await detector.start(detector_config)
 
-        logger.info(
-            "call_detection_enabled",
-            targets=detector_config.target_processes
-        )
+        logger.info("call_detection_enabled", targets=detector_config.target_processes)
 
         return {
             "status": "enabled",
@@ -2426,20 +2485,18 @@ async def enable_call_detection(config: Optional[CallDetectionConfigRequest] = N
                 "target_processes": detector_config.target_processes,
                 "call_start_confirm_seconds": detector_config.call_start_confirm_seconds,
                 "call_end_confirm_seconds": detector_config.call_end_confirm_seconds,
-            }
+            },
         }
 
     except ImportError as e:
         logger.error("call_detection_import_error", error=str(e))
         raise HTTPException(
-            status_code=501,
-            detail=f"Call detection dependencies not available: {e}"
+            status_code=501, detail=f"Call detection dependencies not available: {e}"
         )
     except Exception as e:
         logger.error("call_detection_enable_error", error=str(e))
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to enable call detection: {e}"
+            status_code=500, detail=f"Failed to enable call detection: {e}"
         )
 
 
@@ -2453,7 +2510,10 @@ async def disable_call_detection():
     import sys
 
     if sys.platform != "win32":
-        return {"status": "disabled", "message": "Call detection not available on this platform"}
+        return {
+            "status": "disabled",
+            "message": "Call detection not available on this platform",
+        }
 
     try:
         from ..services.call_detector import get_call_detector
@@ -2470,8 +2530,7 @@ async def disable_call_detection():
     except Exception as e:
         logger.error("call_detection_disable_error", error=str(e))
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to disable call detection: {e}"
+            status_code=500, detail=f"Failed to disable call detection: {e}"
         )
 
 
@@ -2486,8 +2545,7 @@ async def get_monitored_processes():
 
     if sys.platform != "win32":
         raise HTTPException(
-            status_code=501,
-            detail="Process monitoring is only available on Windows"
+            status_code=501, detail="Process monitoring is only available on Windows"
         )
 
     try:
@@ -2502,9 +2560,7 @@ async def get_monitored_processes():
         if detector._process_monitor:
             running = detector._process_monitor.get_running_processes()
             processes = [
-                {"name": name, "pids": pids}
-                for name, pids in running.items()
-                if pids
+                {"name": name, "pids": pids} for name, pids in running.items() if pids
             ]
             return {"processes": processes}
 
@@ -2512,12 +2568,15 @@ async def get_monitored_processes():
 
     except ImportError:
         raise HTTPException(
-            status_code=501,
-            detail="Call detection dependencies not available"
+            status_code=501, detail="Call detection dependencies not available"
         )
 
 
-@router.get("/call-detection/audio-sessions", tags=["call-detection"], dependencies=[Depends(require_debug_enabled)])
+@router.get(
+    "/call-detection/audio-sessions",
+    tags=["call-detection"],
+    dependencies=[Depends(require_debug_enabled)],
+)
 async def get_audio_sessions():
     """
     List all active audio sessions (debug endpoint).
@@ -2532,7 +2591,7 @@ async def get_audio_sessions():
     if sys.platform != "win32":
         raise HTTPException(
             status_code=501,
-            detail="Audio session monitoring is only available on Windows"
+            detail="Audio session monitoring is only available on Windows",
         )
 
     try:
@@ -2548,7 +2607,7 @@ async def get_audio_sessions():
                         "process_name": s["process_name"],
                         "process_id": s["process_id"],
                         "state": s["state"].name,
-                        "session_id": s["session_id"]
+                        "session_id": s["session_id"],
                     }
                     for s in sessions
                 ]
@@ -2556,6 +2615,7 @@ async def get_audio_sessions():
 
         # If detector not running, create a temporary monitor
         from ..services.windows_audio_monitor import WindowsAudioSessionMonitor
+
         temp_monitor = WindowsAudioSessionMonitor(target_processes=[])
         sessions = temp_monitor.get_all_sessions()
 
@@ -2565,15 +2625,14 @@ async def get_audio_sessions():
                     "process_name": s["process_name"],
                     "process_id": s["process_id"],
                     "state": s["state"].name,
-                    "session_id": s["session_id"]
+                    "session_id": s["session_id"],
                 }
                 for s in sessions
             ],
-            "note": "Showing all sessions (call detection not running)"
+            "note": "Showing all sessions (call detection not running)",
         }
 
     except ImportError as e:
         raise HTTPException(
-            status_code=501,
-            detail=f"Call detection dependencies not available: {e}"
+            status_code=501, detail=f"Call detection dependencies not available: {e}"
         )

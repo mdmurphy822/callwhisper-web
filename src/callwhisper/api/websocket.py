@@ -31,7 +31,7 @@ async def websocket_endpoint(websocket: WebSocket):
             "type": "connected",
             **app_state.get_state_info(),
         },
-        websocket
+        websocket,
     )
 
     try:
@@ -44,8 +44,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 await manager.send_personal_message({"type": "pong"}, websocket)
             elif data == "state":
                 await manager.send_personal_message(
-                    {"type": "state", **app_state.get_state_info()},
-                    websocket
+                    {"type": "state", **app_state.get_state_info()}, websocket
                 )
 
     except WebSocketDisconnect:

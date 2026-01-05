@@ -29,6 +29,7 @@ class TranscriptionMetric:
 
     Persisted to disk for analytics and reporting.
     """
+
     job_id: str
     audio_duration_seconds: float
     transcription_duration_seconds: float
@@ -57,6 +58,7 @@ class TranscriptionMetric:
 @dataclass
 class DailyStats:
     """Aggregated stats for a single day."""
+
     date: str
     transcription_count: int
     total_audio_seconds: float
@@ -75,6 +77,7 @@ class DailyStats:
 @dataclass
 class MetricsSummary:
     """Aggregate summary of transcription metrics."""
+
     total_transcriptions: int
     total_audio_hours: float
     total_processing_hours: float
@@ -86,6 +89,7 @@ class MetricsSummary:
 @dataclass
 class OperationMetrics:
     """Metrics for a single operation type."""
+
     count: int = 0
     success_count: int = 0
     error_count: int = 0
@@ -149,7 +153,7 @@ class MetricsCollector:
         operation_name: str,
         duration_ms: float,
         success: bool,
-        error_type: Optional[str] = None
+        error_type: Optional[str] = None,
     ) -> None:
         """
         Record an operation completion.
@@ -175,7 +179,9 @@ class MetricsCollector:
             else:
                 op.error_count += 1
                 if error_type:
-                    op.errors_by_type[error_type] = op.errors_by_type.get(error_type, 0) + 1
+                    op.errors_by_type[error_type] = (
+                        op.errors_by_type.get(error_type, 0) + 1
+                    )
 
     def start_timer(self) -> float:
         """Start a timer for measuring operation duration."""
@@ -198,9 +204,15 @@ class MetricsCollector:
                 "success_rate": round(op.success_rate, 4),
                 "error_rate": round(op.error_rate, 4),
                 "avg_duration_ms": round(op.avg_duration_ms, 2),
-                "p50_duration_ms": round(self._calculate_percentile(op.durations, 50), 2),
-                "p95_duration_ms": round(self._calculate_percentile(op.durations, 95), 2),
-                "p99_duration_ms": round(self._calculate_percentile(op.durations, 99), 2),
+                "p50_duration_ms": round(
+                    self._calculate_percentile(op.durations, 50), 2
+                ),
+                "p95_duration_ms": round(
+                    self._calculate_percentile(op.durations, 95), 2
+                ),
+                "p99_duration_ms": round(
+                    self._calculate_percentile(op.durations, 99), 2
+                ),
                 "errors_by_type": dict(op.errors_by_type),
                 "last_operation_time": op.last_operation_time,
             }
@@ -218,11 +230,15 @@ class MetricsCollector:
                         "success_rate": round(op.success_rate, 4),
                         "error_rate": round(op.error_rate, 4),
                         "avg_duration_ms": round(op.avg_duration_ms, 2),
-                        "p95_duration_ms": round(self._calculate_percentile(op.durations, 95), 2),
-                        "p99_duration_ms": round(self._calculate_percentile(op.durations, 99), 2),
+                        "p95_duration_ms": round(
+                            self._calculate_percentile(op.durations, 95), 2
+                        ),
+                        "p99_duration_ms": round(
+                            self._calculate_percentile(op.durations, 99), 2
+                        ),
                     }
                     for name, op in self._operations.items()
-                }
+                },
             }
 
     def reset(self) -> None:
@@ -267,8 +283,7 @@ class TranscriptionMetricsStore:
                 data = json.load(f)
 
             self._metrics = [
-                TranscriptionMetric.from_dict(m)
-                for m in data.get("transcriptions", [])
+                TranscriptionMetric.from_dict(m) for m in data.get("transcriptions", [])
             ]
 
         except Exception as e:
@@ -276,7 +291,7 @@ class TranscriptionMetricsStore:
                 "metrics_load_failed",
                 path=str(self.store_path),
                 error=str(e),
-                error_type=type(e).__name__
+                error_type=type(e).__name__,
             )
             # If load fails, start fresh
             self._metrics = []
@@ -286,7 +301,7 @@ class TranscriptionMetricsStore:
         try:
             data = {
                 "transcriptions": [m.to_dict() for m in self._metrics],
-                "last_updated": time.time()
+                "last_updated": time.time(),
             }
 
             # Write to temp file first
@@ -300,7 +315,7 @@ class TranscriptionMetricsStore:
                 "metrics_save_failed",
                 path=str(self.store_path),
                 error=str(e),
-                error_type=type(e).__name__
+                error_type=type(e).__name__,
             )
             # Don't crash on save failure, but log the error
 
@@ -315,9 +330,7 @@ class TranscriptionMetricsStore:
         with self._lock:
             # Sort by timestamp descending
             sorted_metrics = sorted(
-                self._metrics,
-                key=lambda m: m.timestamp,
-                reverse=True
+                self._metrics, key=lambda m: m.timestamp, reverse=True
             )
             return sorted_metrics[:limit]
 
@@ -331,13 +344,15 @@ class TranscriptionMetricsStore:
                     total_processing_hours=0.0,
                     avg_processing_speed=0.0,
                     success_rate=1.0,
-                    last_7_days=[]
+                    last_7_days=[],
                 )
 
             total = len(self._metrics)
             success_count = sum(1 for m in self._metrics if m.success)
             total_audio = sum(m.audio_duration_seconds for m in self._metrics)
-            total_processing = sum(m.transcription_duration_seconds for m in self._metrics)
+            total_processing = sum(
+                m.transcription_duration_seconds for m in self._metrics
+            )
 
             avg_speed = total_audio / total_processing if total_processing > 0 else 0.0
 
@@ -352,28 +367,35 @@ class TranscriptionMetricsStore:
                 day_end = day_start + 86400
 
                 day_metrics = [
-                    m for m in self._metrics
-                    if day_start <= m.timestamp < day_end
+                    m for m in self._metrics if day_start <= m.timestamp < day_end
                 ]
 
                 if day_metrics:
-                    daily_stats.append(DailyStats(
-                        date=day_str,
-                        transcription_count=len(day_metrics),
-                        total_audio_seconds=sum(m.audio_duration_seconds for m in day_metrics),
-                        total_processing_seconds=sum(m.transcription_duration_seconds for m in day_metrics),
-                        success_count=sum(1 for m in day_metrics if m.success),
-                        failure_count=sum(1 for m in day_metrics if not m.success)
-                    ))
+                    daily_stats.append(
+                        DailyStats(
+                            date=day_str,
+                            transcription_count=len(day_metrics),
+                            total_audio_seconds=sum(
+                                m.audio_duration_seconds for m in day_metrics
+                            ),
+                            total_processing_seconds=sum(
+                                m.transcription_duration_seconds for m in day_metrics
+                            ),
+                            success_count=sum(1 for m in day_metrics if m.success),
+                            failure_count=sum(1 for m in day_metrics if not m.success),
+                        )
+                    )
                 else:
-                    daily_stats.append(DailyStats(
-                        date=day_str,
-                        transcription_count=0,
-                        total_audio_seconds=0.0,
-                        total_processing_seconds=0.0,
-                        success_count=0,
-                        failure_count=0
-                    ))
+                    daily_stats.append(
+                        DailyStats(
+                            date=day_str,
+                            transcription_count=0,
+                            total_audio_seconds=0.0,
+                            total_processing_seconds=0.0,
+                            success_count=0,
+                            failure_count=0,
+                        )
+                    )
 
             return MetricsSummary(
                 total_transcriptions=total,
@@ -381,7 +403,7 @@ class TranscriptionMetricsStore:
                 total_processing_hours=total_processing / 3600,
                 avg_processing_speed=avg_speed,
                 success_rate=success_count / total if total > 0 else 1.0,
-                last_7_days=daily_stats
+                last_7_days=daily_stats,
             )
 
     def export_csv(self, output_path: Path) -> int:
@@ -400,33 +422,37 @@ class TranscriptionMetricsStore:
                 writer = csv.writer(f)
 
                 # Header
-                writer.writerow([
-                    "job_id",
-                    "timestamp",
-                    "audio_duration_seconds",
-                    "transcription_duration_seconds",
-                    "processing_speed",
-                    "model_used",
-                    "success",
-                    "error_message",
-                    "device_name",
-                    "ticket_id"
-                ])
+                writer.writerow(
+                    [
+                        "job_id",
+                        "timestamp",
+                        "audio_duration_seconds",
+                        "transcription_duration_seconds",
+                        "processing_speed",
+                        "model_used",
+                        "success",
+                        "error_message",
+                        "device_name",
+                        "ticket_id",
+                    ]
+                )
 
                 # Data rows
                 for m in sorted(self._metrics, key=lambda x: x.timestamp):
-                    writer.writerow([
-                        m.job_id,
-                        datetime.fromtimestamp(m.timestamp).isoformat(),
-                        round(m.audio_duration_seconds, 2),
-                        round(m.transcription_duration_seconds, 2),
-                        round(m.processing_speed, 2),
-                        m.model_used,
-                        m.success,
-                        m.error_message or "",
-                        m.device_name or "",
-                        m.ticket_id or ""
-                    ])
+                    writer.writerow(
+                        [
+                            m.job_id,
+                            datetime.fromtimestamp(m.timestamp).isoformat(),
+                            round(m.audio_duration_seconds, 2),
+                            round(m.transcription_duration_seconds, 2),
+                            round(m.processing_speed, 2),
+                            m.model_used,
+                            m.success,
+                            m.error_message or "",
+                            m.device_name or "",
+                            m.ticket_id or "",
+                        ]
+                    )
 
             return len(self._metrics)
 
@@ -472,7 +498,7 @@ def record_transcription(
     success: bool,
     error_message: Optional[str] = None,
     device_name: Optional[str] = None,
-    ticket_id: Optional[str] = None
+    ticket_id: Optional[str] = None,
 ) -> None:
     """
     Record a transcription completion.
@@ -487,7 +513,7 @@ def record_transcription(
         success=success,
         error_message=error_message,
         device_name=device_name,
-        ticket_id=ticket_id
+        ticket_id=ticket_id,
     )
 
     store = get_transcription_store()

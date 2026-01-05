@@ -33,6 +33,7 @@ class RequestContext:
     - Deadline propagation for timeout cascade management
     - Processing history for debugging and audit
     """
+
     correlation_id: str
     deadline: float  # Unix timestamp when request should complete
     source_metadata: Dict[str, Any] = field(default_factory=dict)
@@ -67,14 +68,12 @@ class RequestContext:
             deadline=child_deadline,
             source_metadata=self.source_metadata.copy(),
             processing_history=self.processing_history.copy(),
-            created_at=self.created_at
+            created_at=self.created_at,
         )
 
     @classmethod
     def create(
-        cls,
-        timeout_seconds: float = 600.0,
-        metadata: Optional[Dict[str, Any]] = None
+        cls, timeout_seconds: float = 600.0, metadata: Optional[Dict[str, Any]] = None
     ) -> "RequestContext":
         """
         Create a new RequestContext with specified timeout.
@@ -89,13 +88,13 @@ class RequestContext:
         return cls(
             correlation_id=generate_request_id(),
             deadline=time.time() + timeout_seconds,
-            source_metadata=metadata or {}
+            source_metadata=metadata or {},
         )
 
 
 # Context variable for RequestContext - thread-safe and async-safe
 request_context_var: ContextVar[Optional[RequestContext]] = ContextVar(
-    'request_context', default=None
+    "request_context", default=None
 )
 
 
@@ -108,9 +107,10 @@ def set_request_context(ctx: Optional[RequestContext]) -> None:
     """Set the current request context."""
     request_context_var.set(ctx)
 
+
 # Context variable for request tracing - thread-safe and async-safe
-request_id_var: ContextVar[str] = ContextVar('request_id', default='')
-session_id_var: ContextVar[str] = ContextVar('session_id', default='')
+request_id_var: ContextVar[str] = ContextVar("request_id", default="")
+session_id_var: ContextVar[str] = ContextVar("session_id", default="")
 
 
 def generate_request_id() -> str:
@@ -163,11 +163,12 @@ class TracingMiddleware(BaseHTTPMiddleware):
             request_id=request_id,
             method=request.method,
             path=request.url.path,
-            client=request.client.host if request.client else "unknown"
+            client=request.client.host if request.client else "unknown",
         )
 
         # Process request
         import time
+
         start_time = time.time()
 
         try:
@@ -184,7 +185,7 @@ class TracingMiddleware(BaseHTTPMiddleware):
                 method=request.method,
                 path=request.url.path,
                 status_code=response.status_code,
-                duration_ms=round(duration_ms, 2)
+                duration_ms=round(duration_ms, 2),
             )
 
             return response
@@ -197,7 +198,7 @@ class TracingMiddleware(BaseHTTPMiddleware):
                 method=request.method,
                 path=request.url.path,
                 error=str(e),
-                duration_ms=round(duration_ms, 2)
+                duration_ms=round(duration_ms, 2),
             )
             raise
 
@@ -211,6 +212,7 @@ def traced(operation_name: Optional[str] = None):
         async def transcribe_audio(folder, settings):
             ...
     """
+
     def decorator(func: Callable) -> Callable:
         op_name = operation_name or func.__name__
 
@@ -223,10 +225,11 @@ def traced(operation_name: Optional[str] = None):
                 "operation_started",
                 operation=op_name,
                 request_id=request_id,
-                session_id=session_id
+                session_id=session_id,
             )
 
             import time
+
             start_time = time.time()
 
             try:
@@ -238,7 +241,7 @@ def traced(operation_name: Optional[str] = None):
                     operation=op_name,
                     request_id=request_id,
                     session_id=session_id,
-                    duration_ms=round(duration_ms, 2)
+                    duration_ms=round(duration_ms, 2),
                 )
 
                 return result
@@ -252,7 +255,7 @@ def traced(operation_name: Optional[str] = None):
                     session_id=session_id,
                     error=str(e),
                     error_type=type(e).__name__,
-                    duration_ms=round(duration_ms, 2)
+                    duration_ms=round(duration_ms, 2),
                 )
                 raise
 
@@ -265,10 +268,11 @@ def traced(operation_name: Optional[str] = None):
                 "operation_started",
                 operation=op_name,
                 request_id=request_id,
-                session_id=session_id
+                session_id=session_id,
             )
 
             import time
+
             start_time = time.time()
 
             try:
@@ -280,7 +284,7 @@ def traced(operation_name: Optional[str] = None):
                     operation=op_name,
                     request_id=request_id,
                     session_id=session_id,
-                    duration_ms=round(duration_ms, 2)
+                    duration_ms=round(duration_ms, 2),
                 )
 
                 return result
@@ -294,12 +298,13 @@ def traced(operation_name: Optional[str] = None):
                     session_id=session_id,
                     error=str(e),
                     error_type=type(e).__name__,
-                    duration_ms=round(duration_ms, 2)
+                    duration_ms=round(duration_ms, 2),
                 )
                 raise
 
         # Return appropriate wrapper based on function type
         import asyncio
+
         if asyncio.iscoroutinefunction(func):
             return async_wrapper
         return sync_wrapper
@@ -321,7 +326,7 @@ class TraceContext:
         self,
         operation_name: str,
         request_id: Optional[str] = None,
-        session_id: Optional[str] = None
+        session_id: Optional[str] = None,
     ):
         self.operation_name = operation_name
         self.request_id = request_id or get_request_id() or generate_request_id()
@@ -340,7 +345,7 @@ class TraceContext:
             "trace_scope_entered",
             operation=self.operation_name,
             request_id=self.request_id,
-            session_id=self.session_id
+            session_id=self.session_id,
         )
         return self
 
@@ -352,14 +357,14 @@ class TraceContext:
                 request_id=self.request_id,
                 session_id=self.session_id,
                 error=str(exc_val),
-                error_type=exc_type.__name__ if exc_type else None
+                error_type=exc_type.__name__ if exc_type else None,
             )
         else:
             logger.debug(
                 "trace_scope_exited",
                 operation=self.operation_name,
                 request_id=self.request_id,
-                session_id=self.session_id
+                session_id=self.session_id,
             )
 
         # Restore previous context

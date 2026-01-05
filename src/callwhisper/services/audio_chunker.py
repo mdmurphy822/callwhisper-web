@@ -21,12 +21,13 @@ logger = get_service_logger()
 
 # Default chunking parameters
 CHUNK_DURATION_SECONDS = 300  # 5 minutes per chunk
-CHUNK_OVERLAP_SECONDS = 5     # 5 seconds overlap for context continuity
+CHUNK_OVERLAP_SECONDS = 5  # 5 seconds overlap for context continuity
 
 
 @dataclass
 class AudioChunk:
     """Represents a single audio chunk for transcription."""
+
     index: int
     chunk_path: str
     start_time: float
@@ -44,6 +45,7 @@ class AudioChunk:
 @dataclass
 class ChunkManifest:
     """Manifest tracking all chunks for an audio file."""
+
     audio_path: str
     total_duration: float
     chunk_count: int
@@ -58,7 +60,7 @@ class ChunkManifest:
             "chunk_count": self.chunk_count,
             "chunk_duration": self.chunk_duration,
             "overlap_seconds": self.overlap_seconds,
-            "chunks": [c.to_dict() for c in self.chunks]
+            "chunks": [c.to_dict() for c in self.chunks],
         }
 
     @classmethod
@@ -70,7 +72,7 @@ class ChunkManifest:
             chunk_count=data["chunk_count"],
             chunk_duration=data["chunk_duration"],
             overlap_seconds=data["overlap_seconds"],
-            chunks=chunks
+            chunks=chunks,
         )
 
     def save(self, manifest_path: Path) -> None:
@@ -99,17 +101,22 @@ async def get_audio_duration(audio_path: Path) -> float:
         RuntimeError: If ffprobe fails
     """
     ffmpeg_path = get_ffmpeg_path()
-    ffprobe_path = ffmpeg_path.parent / ("ffprobe.exe" if os.name == 'nt' else "ffprobe")
+    ffprobe_path = ffmpeg_path.parent / (
+        "ffprobe.exe" if os.name == "nt" else "ffprobe"
+    )
 
     if not ffprobe_path.exists():
         ffprobe_path = Path("ffprobe")
 
     cmd = [
         str(ffprobe_path),
-        "-v", "error",
-        "-show_entries", "format=duration",
-        "-of", "default=noprint_wrappers=1:nokey=1",
-        str(audio_path)
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        str(audio_path),
     ]
 
     try:
@@ -117,7 +124,7 @@ async def get_audio_duration(audio_path: Path) -> float:
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
         )
         stdout, stderr = await proc.communicate()
 
@@ -166,7 +173,7 @@ async def split_audio_to_chunks(
         "splitting_audio",
         audio_path=str(audio_path),
         total_duration=total_duration,
-        chunk_duration=chunk_duration
+        chunk_duration=chunk_duration,
     )
 
     while start < total_duration:
@@ -177,26 +184,34 @@ async def split_audio_to_chunks(
         # FFmpeg command to extract chunk
         cmd = [
             str(ffmpeg_path),
-            "-y",                   # Overwrite output
-            "-ss", str(start),      # Seek to start position
-            "-i", str(audio_path),  # Input file
-            "-t", str(actual_duration),  # Duration
-            "-ar", "16000",         # 16kHz sample rate (whisper requirement)
-            "-ac", "1",             # Mono
-            "-acodec", "pcm_s16le", # 16-bit PCM
-            str(chunk_path)
+            "-y",  # Overwrite output
+            "-ss",
+            str(start),  # Seek to start position
+            "-i",
+            str(audio_path),  # Input file
+            "-t",
+            str(actual_duration),  # Duration
+            "-ar",
+            "16000",  # 16kHz sample rate (whisper requirement)
+            "-ac",
+            "1",  # Mono
+            "-acodec",
+            "pcm_s16le",  # 16-bit PCM
+            str(chunk_path),
         ]
 
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
         )
         _, stderr = await proc.communicate()
 
         if proc.returncode != 0:
-            logger.error("chunk_creation_failed", chunk=chunk_idx, error=stderr.decode())
+            logger.error(
+                "chunk_creation_failed", chunk=chunk_idx, error=stderr.decode()
+            )
             raise RuntimeError(f"Failed to create chunk {chunk_idx}: {stderr.decode()}")
 
         chunk = AudioChunk(
@@ -204,7 +219,7 @@ async def split_audio_to_chunks(
             chunk_path=str(chunk_path),
             start_time=start,
             end_time=end,
-            duration=actual_duration
+            duration=actual_duration,
         )
         chunks.append(chunk)
 
@@ -213,7 +228,7 @@ async def split_audio_to_chunks(
             chunk_index=chunk_idx,
             start=start,
             end=end,
-            duration=actual_duration
+            duration=actual_duration,
         )
 
         # Move start position with overlap for context
@@ -226,21 +241,18 @@ async def split_audio_to_chunks(
         chunk_count=len(chunks),
         chunk_duration=chunk_duration,
         overlap_seconds=overlap_seconds,
-        chunks=chunks
+        chunks=chunks,
     )
 
     logger.info(
-        "audio_split_complete",
-        chunk_count=len(chunks),
-        total_duration=total_duration
+        "audio_split_complete", chunk_count=len(chunks), total_duration=total_duration
     )
 
     return manifest
 
 
 def merge_chunk_transcripts(
-    transcripts: List[str],
-    overlap_seconds: int = CHUNK_OVERLAP_SECONDS
+    transcripts: List[str], overlap_seconds: int = CHUNK_OVERLAP_SECONDS
 ) -> str:
     """
     Merge transcripts from multiple chunks, handling overlaps.
@@ -333,10 +345,7 @@ async def ensure_chunks_exist(
         try:
             manifest = ChunkManifest.load(manifest_path)
             # Verify chunks still exist
-            all_exist = all(
-                Path(c.chunk_path).exists()
-                for c in manifest.chunks
-            )
+            all_exist = all(Path(c.chunk_path).exists() for c in manifest.chunks)
             if all_exist:
                 logger.debug("using_existing_chunks", chunk_count=manifest.chunk_count)
                 return manifest
@@ -347,9 +356,7 @@ async def ensure_chunks_exist(
 
     # Create new chunks
     manifest = await split_audio_to_chunks(
-        audio_path,
-        chunks_dir,
-        chunk_duration=chunk_duration
+        audio_path, chunks_dir, chunk_duration=chunk_duration
     )
 
     # Save manifest

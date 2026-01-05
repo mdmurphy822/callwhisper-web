@@ -71,12 +71,7 @@ def _list_dshow_devices() -> List[str]:
 
     try:
         result = subprocess.run(
-            [
-                str(ffmpeg_path),
-                "-list_devices", "true",
-                "-f", "dshow",
-                "-i", "dummy"
-            ],
+            [str(ffmpeg_path), "-list_devices", "true", "-f", "dshow", "-i", "dummy"],
             capture_output=True,
             text=True,
             timeout=10,
@@ -85,7 +80,9 @@ def _list_dshow_devices() -> List[str]:
         return _parse_dshow_output(result.stderr)
 
     except subprocess.TimeoutExpired:
-        logger.warning("device_enumeration_timeout", backend="dshow", timeout_seconds=10)
+        logger.warning(
+            "device_enumeration_timeout", backend="dshow", timeout_seconds=10
+        )
         return []
     except FileNotFoundError:
         logger.error("ffmpeg_not_found", path=str(ffmpeg_path))
@@ -116,7 +113,9 @@ def _list_pulse_devices() -> List[str]:
         logger.error("pactl_not_found")
         return []
     except subprocess.TimeoutExpired:
-        logger.warning("device_enumeration_timeout", backend="pulse", timeout_seconds=10)
+        logger.warning(
+            "device_enumeration_timeout", backend="pulse", timeout_seconds=10
+        )
         return []
     except Exception as e:
         logger.error("device_enumeration_failed", backend="pulse", error=str(e))
@@ -164,15 +163,15 @@ def _parse_dshow_output(ffmpeg_output: str) -> List[str]:
     devices = []
     in_audio_section = False
 
-    for line in ffmpeg_output.split('\n'):
+    for line in ffmpeg_output.split("\n"):
         line = line.strip()
 
-        if 'DirectShow audio devices' in line:
+        if "DirectShow audio devices" in line:
             in_audio_section = True
             continue
 
-        if in_audio_section and ('DirectShow video devices' in line or not line):
-            if 'DirectShow video devices' in line:
+        if in_audio_section and ("DirectShow video devices" in line or not line):
+            if "DirectShow video devices" in line:
                 in_audio_section = False
             continue
 
@@ -180,7 +179,7 @@ def _parse_dshow_output(ffmpeg_output: str) -> List[str]:
             match = re.search(r'"([^"]+)"', line)
             if match:
                 device_name = match.group(1)
-                if 'Alternative name' not in line:
+                if "Alternative name" not in line:
                     devices.append(device_name)
 
     return devices
@@ -197,11 +196,11 @@ def _parse_pulse_output(pactl_output: str) -> List[str]:
     """
     devices = []
 
-    for line in pactl_output.strip().split('\n'):
+    for line in pactl_output.strip().split("\n"):
         if not line:
             continue
 
-        parts = line.split('\t')
+        parts = line.split("\t")
         if len(parts) >= 2:
             device_name = parts[1]
             devices.append(device_name)
@@ -222,9 +221,9 @@ def _parse_alsa_output(arecord_output: str) -> List[str]:
     devices = []
 
     # Match "card N: Name [Description], device M: ..."
-    pattern = r'card (\d+):.*\[([^\]]+)\], device (\d+):'
+    pattern = r"card (\d+):.*\[([^\]]+)\], device (\d+):"
 
-    for line in arecord_output.split('\n'):
+    for line in arecord_output.split("\n"):
         match = re.search(pattern, line)
         if match:
             card_num = match.group(1)
@@ -291,6 +290,7 @@ async def list_audio_devices_async(use_cache: bool = True) -> List[str]:
         List of audio device names available for recording.
     """
     import asyncio
+
     global _device_cache
 
     # Check cache first (with lock)
@@ -316,7 +316,9 @@ async def list_audio_devices_async(use_cache: bool = True) -> List[str]:
     # Update cache (with lock)
     with _cache_lock:
         _device_cache = (devices, time.time())
-    logger.debug("device_list_refreshed_async", device_count=len(devices), backend=backend)
+    logger.debug(
+        "device_list_refreshed_async", device_count=len(devices), backend=backend
+    )
 
     return devices
 
@@ -332,20 +334,25 @@ async def _list_dshow_devices_async() -> List[str]:
     try:
         proc = await asyncio.create_subprocess_exec(
             str(ffmpeg_path),
-            "-list_devices", "true",
-            "-f", "dshow",
-            "-i", "dummy",
+            "-list_devices",
+            "true",
+            "-f",
+            "dshow",
+            "-i",
+            "dummy",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
 
         _, stderr = await asyncio.wait_for(proc.communicate(), timeout=10)
-        output = stderr.decode(errors='replace')
+        output = stderr.decode(errors="replace")
 
         return _parse_dshow_output(output)
 
     except asyncio.TimeoutError:
-        logger.warning("device_enumeration_timeout_async", backend="dshow", timeout_seconds=10)
+        logger.warning(
+            "device_enumeration_timeout_async", backend="dshow", timeout_seconds=10
+        )
         return []
     except FileNotFoundError:
         logger.error("ffmpeg_not_found_async", path=str(ffmpeg_path))
@@ -361,7 +368,10 @@ async def _list_pulse_devices_async() -> List[str]:
 
     try:
         proc = await asyncio.create_subprocess_exec(
-            "pactl", "list", "sources", "short",
+            "pactl",
+            "list",
+            "sources",
+            "short",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -369,13 +379,15 @@ async def _list_pulse_devices_async() -> List[str]:
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=10)
 
         if proc.returncode != 0:
-            logger.warning("pactl_failed_async", stderr=stderr.decode(errors='replace'))
+            logger.warning("pactl_failed_async", stderr=stderr.decode(errors="replace"))
             return []
 
-        return _parse_pulse_output(stdout.decode(errors='replace'))
+        return _parse_pulse_output(stdout.decode(errors="replace"))
 
     except asyncio.TimeoutError:
-        logger.warning("device_enumeration_timeout_async", backend="pulse", timeout_seconds=10)
+        logger.warning(
+            "device_enumeration_timeout_async", backend="pulse", timeout_seconds=10
+        )
         return []
     except FileNotFoundError:
         logger.error("pactl_not_found_async")
@@ -391,7 +403,8 @@ async def _list_alsa_devices_async() -> List[str]:
 
     try:
         proc = await asyncio.create_subprocess_exec(
-            "arecord", "-l",
+            "arecord",
+            "-l",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -399,13 +412,17 @@ async def _list_alsa_devices_async() -> List[str]:
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=10)
 
         if proc.returncode != 0:
-            logger.warning("arecord_failed_async", stderr=stderr.decode(errors='replace'))
+            logger.warning(
+                "arecord_failed_async", stderr=stderr.decode(errors="replace")
+            )
             return []
 
-        return _parse_alsa_output(stdout.decode(errors='replace'))
+        return _parse_alsa_output(stdout.decode(errors="replace"))
 
     except asyncio.TimeoutError:
-        logger.warning("device_enumeration_timeout_async", backend="alsa", timeout_seconds=10)
+        logger.warning(
+            "device_enumeration_timeout_async", backend="alsa", timeout_seconds=10
+        )
         return []
     except FileNotFoundError:
         logger.error("arecord_not_found_async")

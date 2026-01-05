@@ -19,12 +19,16 @@ from enum import Enum
 from collections import deque
 
 from ..core.logging_config import get_service_logger
-from ..core.exceptions import CircuitOpenError, AllHandlersFailedError, ProcessTimeoutError
+from ..core.exceptions import (
+    CircuitOpenError,
+    AllHandlersFailedError,
+    ProcessTimeoutError,
+)
 from ..core.tracing import (
     RequestContext,
     get_request_context,
     set_request_context,
-    get_request_id
+    get_request_id,
 )
 
 logger = get_service_logger()
@@ -34,7 +38,7 @@ def exponential_backoff_with_jitter(
     attempt: int,
     base_delay: float = 1.0,
     max_delay: float = 60.0,
-    jitter_factor: float = 0.5
+    jitter_factor: float = 0.5,
 ) -> float:
     """
     Calculate backoff delay with jitter to prevent thundering herd.
@@ -53,7 +57,7 @@ def exponential_backoff_with_jitter(
         Delay in seconds
     """
     # Exponential delay: base * 2^attempt, capped at max
-    delay = min(base_delay * (2 ** attempt), max_delay)
+    delay = min(base_delay * (2**attempt), max_delay)
 
     # Add random jitter
     jitter = delay * jitter_factor * random.random()
@@ -65,7 +69,7 @@ def exponential_backoff_with_jitter(
         base_delay=base_delay,
         calculated_delay=round(delay, 2),
         jitter=round(jitter, 2),
-        final_delay=round(final_delay, 2)
+        final_delay=round(final_delay, 2),
     )
 
     return final_delay
@@ -73,14 +77,16 @@ def exponential_backoff_with_jitter(
 
 class CircuitState(str, Enum):
     """Circuit breaker states."""
-    CLOSED = "closed"      # Normal operation
-    OPEN = "open"          # Rejecting requests
+
+    CLOSED = "closed"  # Normal operation
+    OPEN = "open"  # Rejecting requests
     HALF_OPEN = "half_open"  # Testing if service recovered
 
 
 @dataclass
 class CircuitBreakerState:
     """State tracking for a circuit breaker."""
+
     state: CircuitState = CircuitState.CLOSED
     failure_count: int = 0
     success_count: int = 0
@@ -92,6 +98,7 @@ class CircuitBreakerState:
 @dataclass
 class FallbackSpec:
     """Specification for a fallback handler."""
+
     handler: str
     timeout: float = 120.0
     retries: int = 1
@@ -101,6 +108,7 @@ class FallbackSpec:
 @dataclass
 class ExecutionAttempt:
     """Record of an execution attempt."""
+
     handler: str
     success: bool
     duration_ms: float
@@ -111,6 +119,7 @@ class ExecutionAttempt:
 @dataclass
 class HandlerMetrics:
     """Metrics for load-aware routing."""
+
     queue_depth: int = 0
     durations_ms: deque = field(default_factory=lambda: deque(maxlen=100))
     error_count: int = 0
@@ -171,7 +180,9 @@ class LoadAwareRouter:
             m.queue_depth += 1
             m.last_updated = time.time()
 
-    def record_completion(self, handler: str, duration_ms: float, success: bool) -> None:
+    def record_completion(
+        self, handler: str, duration_ms: float, success: bool
+    ) -> None:
         """Record handler completion with metrics."""
         with self._lock:
             m = self._get_metrics(handler)
@@ -203,11 +214,7 @@ class LoadAwareRouter:
         error_factor = m.error_rate  # Already 0-1
 
         # Weighted combination
-        score = (
-            queue_factor * 0.4 +
-            latency_factor * 0.4 +
-            error_factor * 0.2
-        )
+        score = queue_factor * 0.4 + latency_factor * 0.4 + error_factor * 0.2
 
         return score
 
@@ -237,9 +244,7 @@ class LoadAwareRouter:
             # All overloaded, select least loaded
             best = min(scores, key=lambda x: x[1])
             logger.warning(
-                "all_handlers_overloaded",
-                selected=best[0],
-                score=round(best[1], 3)
+                "all_handlers_overloaded", selected=best[0], score=round(best[1], 3)
             )
             return best[0]
 
@@ -249,7 +254,7 @@ class LoadAwareRouter:
             "handler_selected",
             handler=best[0],
             score=round(best[1], 3),
-            alternatives=len(handlers) - 1
+            alternatives=len(handlers) - 1,
         )
         return best[0]
 
@@ -262,7 +267,7 @@ class LoadAwareRouter:
                     "p95_latency_ms": round(m.p95_latency_ms, 2),
                     "error_rate": round(m.error_rate, 4),
                     "total_requests": m.total_count,
-                    "load_score": round(self.calculate_load_score(handler), 3)
+                    "load_score": round(self.calculate_load_score(handler), 3),
                 }
                 for handler, m in self._metrics.items()
             }
@@ -287,7 +292,7 @@ class ProcessOrchestrator:
         cooldown_seconds: float = 60.0,
         half_open_max_calls: int = 3,
         load_threshold: float = 0.8,
-        base_backoff_delay: float = 1.0
+        base_backoff_delay: float = 1.0,
     ):
         """
         Initialize the orchestrator.
@@ -312,9 +317,7 @@ class ProcessOrchestrator:
         self._load_router = LoadAwareRouter(load_threshold=load_threshold)
 
     def register_fallback_chain(
-        self,
-        task_type: str,
-        chain: List[Dict[str, Any]]
+        self, task_type: str, chain: List[Dict[str, Any]]
     ) -> None:
         """
         Register a fallback chain for a task type.
@@ -328,10 +331,10 @@ class ProcessOrchestrator:
         """
         specs = [
             FallbackSpec(
-                handler=item['handler'],
-                timeout=item.get('timeout', 120.0),
-                retries=item.get('retries', 1),
-                priority=idx
+                handler=item["handler"],
+                timeout=item.get("timeout", 120.0),
+                retries=item.get("retries", 1),
+                priority=idx,
             )
             for idx, item in enumerate(chain)
         ]
@@ -340,7 +343,7 @@ class ProcessOrchestrator:
         logger.info(
             "fallback_chain_registered",
             task_type=task_type,
-            handlers=[s.handler for s in specs]
+            handlers=[s.handler for s in specs],
         )
 
     def _get_circuit_breaker(self, handler: str) -> CircuitBreakerState:
@@ -370,14 +373,17 @@ class ProcessOrchestrator:
                     cb.state = CircuitState.HALF_OPEN
                     self._half_open_calls[handler] = 0
                     logger.info(
-                        "circuit_half_open",
-                        handler=handler,
-                        cooldown_elapsed=elapsed
+                        "circuit_half_open", handler=handler, cooldown_elapsed=elapsed
                     )
                     return True, None
 
-            cooldown_remaining = self.cooldown_seconds - (time.time() - (cb.last_failure_time or 0))
-            return False, f"circuit_open (cooldown: {cooldown_remaining:.1f}s remaining)"
+            cooldown_remaining = self.cooldown_seconds - (
+                time.time() - (cb.last_failure_time or 0)
+            )
+            return (
+                False,
+                f"circuit_open (cooldown: {cooldown_remaining:.1f}s remaining)",
+            )
 
         if cb.state == CircuitState.HALF_OPEN:
             # Allow limited calls in half-open
@@ -412,9 +418,7 @@ class ProcessOrchestrator:
                 cb.state = CircuitState.CLOSED
                 cb.failure_count = 0
                 logger.info(
-                    "circuit_closed",
-                    handler=handler,
-                    success_count=cb.success_count
+                    "circuit_closed", handler=handler, success_count=cb.success_count
                 )
 
     def _record_failure(self, handler: str, error: str) -> None:
@@ -429,7 +433,7 @@ class ProcessOrchestrator:
             handler=handler,
             consecutive_failures=cb.consecutive_failures,
             total_failures=cb.failure_count,
-            error=error
+            error=error,
         )
 
         # Check if circuit should open
@@ -438,16 +442,14 @@ class ProcessOrchestrator:
             logger.warning(
                 "circuit_opened",
                 handler=handler,
-                consecutive_failures=cb.consecutive_failures
+                consecutive_failures=cb.consecutive_failures,
             )
 
         # If in half-open and failed, go back to open
         if cb.state == CircuitState.HALF_OPEN:
             cb.state = CircuitState.OPEN
             logger.info(
-                "circuit_reopened",
-                handler=handler,
-                reason="failure_in_half_open"
+                "circuit_reopened", handler=handler, reason="failure_in_half_open"
             )
 
     async def execute_with_fallback(
@@ -455,7 +457,7 @@ class ProcessOrchestrator:
         task_type: str,
         execute_fn: Callable[[str, Any], Any],
         context: Optional[RequestContext] = None,
-        **kwargs
+        **kwargs,
     ) -> Tuple[Any, Dict[str, Any]]:
         """
         Execute task with fallback chain and circuit breaker.
@@ -481,13 +483,13 @@ class ProcessOrchestrator:
             raise ProcessTimeoutError(
                 f"Request deadline exceeded before starting {task_type}",
                 task_type=task_type,
-                correlation_id=ctx.correlation_id
+                correlation_id=ctx.correlation_id,
             )
 
         chain = self._fallback_chains.get(task_type)
         if not chain:
             # No fallback chain - use default
-            chain = [FallbackSpec(handler='default', timeout=120.0)]
+            chain = [FallbackSpec(handler="default", timeout=120.0)]
 
         attempts: List[ExecutionAttempt] = []
         request_id = get_request_id() if not ctx else ctx.correlation_id
@@ -502,12 +504,14 @@ class ProcessOrchestrator:
             # Check circuit breaker
             allowed, reason = self._check_circuit(handler)
             if not allowed:
-                attempts.append(ExecutionAttempt(
-                    handler=handler,
-                    success=False,
-                    duration_ms=0,
-                    skipped_reason=reason
-                ))
+                attempts.append(
+                    ExecutionAttempt(
+                        handler=handler,
+                        success=False,
+                        duration_ms=0,
+                        skipped_reason=reason,
+                    )
+                )
                 continue
 
             # Attempt execution with retries
@@ -515,14 +519,13 @@ class ProcessOrchestrator:
                 # Apply backoff delay for retries (not first attempt)
                 if retry > 0:
                     backoff_delay = exponential_backoff_with_jitter(
-                        attempt=retry - 1,
-                        base_delay=self.base_backoff_delay
+                        attempt=retry - 1, base_delay=self.base_backoff_delay
                     )
                     logger.debug(
                         "retry_backoff",
                         handler=handler,
                         retry=retry,
-                        backoff_seconds=round(backoff_delay, 2)
+                        backoff_seconds=round(backoff_delay, 2),
                     )
                     await asyncio.sleep(backoff_delay)
 
@@ -532,7 +535,7 @@ class ProcessOrchestrator:
                         "deadline_exceeded_during_fallback",
                         task_type=task_type,
                         handler=handler,
-                        correlation_id=ctx.correlation_id
+                        correlation_id=ctx.correlation_id,
                     )
                     break  # Exit fallback loop
 
@@ -543,23 +546,27 @@ class ProcessOrchestrator:
                 effective_timeout = spec.timeout
                 if ctx and spec.timeout > 0:
                     remaining = ctx.remaining_time()
-                    effective_timeout = min(spec.timeout, remaining) if remaining > 0 else spec.timeout
+                    effective_timeout = (
+                        min(spec.timeout, remaining) if remaining > 0 else spec.timeout
+                    )
 
                 try:
                     result = await asyncio.wait_for(
                         execute_fn(handler, **kwargs),
-                        timeout=effective_timeout if effective_timeout > 0 else None
+                        timeout=effective_timeout if effective_timeout > 0 else None,
                     )
 
                     duration_ms = (time.time() - start_time) * 1000
                     self._record_success(handler)
-                    self._load_router.record_completion(handler, duration_ms, success=True)
+                    self._load_router.record_completion(
+                        handler, duration_ms, success=True
+                    )
 
-                    attempts.append(ExecutionAttempt(
-                        handler=handler,
-                        success=True,
-                        duration_ms=duration_ms
-                    ))
+                    attempts.append(
+                        ExecutionAttempt(
+                            handler=handler, success=True, duration_ms=duration_ms
+                        )
+                    )
 
                     # Record stage completion
                     if ctx:
@@ -572,41 +579,49 @@ class ProcessOrchestrator:
                         fallback_level=level,
                         retry=retry,
                         duration_ms=round(duration_ms, 2),
-                        correlation_id=ctx.correlation_id if ctx else request_id
+                        correlation_id=ctx.correlation_id if ctx else request_id,
                     )
 
                     return result, {
-                        'handler': handler,
-                        'fallback_level': level,
-                        'attempts': [a.__dict__ for a in attempts],
-                        'duration_ms': duration_ms,
-                        'correlation_id': ctx.correlation_id if ctx else request_id,
-                        'processing_history': ctx.processing_history if ctx else []
+                        "handler": handler,
+                        "fallback_level": level,
+                        "attempts": [a.__dict__ for a in attempts],
+                        "duration_ms": duration_ms,
+                        "correlation_id": ctx.correlation_id if ctx else request_id,
+                        "processing_history": ctx.processing_history if ctx else [],
                     }
 
                 except asyncio.TimeoutError:
                     duration_ms = (time.time() - start_time) * 1000
                     error = f"timeout after {spec.timeout}s"
                     self._record_failure(handler, error)
-                    self._load_router.record_completion(handler, duration_ms, success=False)
-                    attempts.append(ExecutionAttempt(
-                        handler=handler,
-                        success=False,
-                        duration_ms=duration_ms,
-                        error=error
-                    ))
+                    self._load_router.record_completion(
+                        handler, duration_ms, success=False
+                    )
+                    attempts.append(
+                        ExecutionAttempt(
+                            handler=handler,
+                            success=False,
+                            duration_ms=duration_ms,
+                            error=error,
+                        )
+                    )
 
                 except Exception as e:
                     duration_ms = (time.time() - start_time) * 1000
                     error = f"{type(e).__name__}: {str(e)}"
                     self._record_failure(handler, error)
-                    self._load_router.record_completion(handler, duration_ms, success=False)
-                    attempts.append(ExecutionAttempt(
-                        handler=handler,
-                        success=False,
-                        duration_ms=duration_ms,
-                        error=error
-                    ))
+                    self._load_router.record_completion(
+                        handler, duration_ms, success=False
+                    )
+                    attempts.append(
+                        ExecutionAttempt(
+                            handler=handler,
+                            success=False,
+                            duration_ms=duration_ms,
+                            error=error,
+                        )
+                    )
 
         # Record failure stage
         if ctx:
@@ -617,24 +632,24 @@ class ProcessOrchestrator:
             "all_handlers_failed",
             task_type=task_type,
             attempts=[a.__dict__ for a in attempts],
-            correlation_id=ctx.correlation_id if ctx else request_id
+            correlation_id=ctx.correlation_id if ctx else request_id,
         )
         raise AllHandlersFailedError(
             task_type=task_type,
             attempts=[a.__dict__ for a in attempts],
-            correlation_id=ctx.correlation_id if ctx else None
+            correlation_id=ctx.correlation_id if ctx else None,
         )
 
     def get_circuit_status(self) -> Dict[str, Dict[str, Any]]:
         """Get status of all circuit breakers."""
         return {
             handler: {
-                'state': cb.state.value,
-                'failure_count': cb.failure_count,
-                'success_count': cb.success_count,
-                'consecutive_failures': cb.consecutive_failures,
-                'last_failure': cb.last_failure_time,
-                'last_success': cb.last_success_time,
+                "state": cb.state.value,
+                "failure_count": cb.failure_count,
+                "success_count": cb.success_count,
+                "consecutive_failures": cb.consecutive_failures,
+                "last_failure": cb.last_failure_time,
+                "last_success": cb.last_success_time,
             }
             for handler, cb in self._circuit_breakers.items()
         }
@@ -680,16 +695,29 @@ class ProcessOrchestrator:
 process_orchestrator = ProcessOrchestrator()
 
 # Register default fallback chains
-process_orchestrator.register_fallback_chain('transcription', [
-    {'handler': 'whisper_large', 'timeout': 600, 'retries': 1},
-    {'handler': 'whisper_medium', 'timeout': 300, 'retries': 2},
-    {'handler': 'whisper_small', 'timeout': 120, 'retries': 2},
-])
+process_orchestrator.register_fallback_chain(
+    "transcription",
+    [
+        {"handler": "whisper_large", "timeout": 600, "retries": 1},
+        {"handler": "whisper_medium", "timeout": 300, "retries": 2},
+        {"handler": "whisper_small", "timeout": 120, "retries": 2},
+    ],
+)
 
-process_orchestrator.register_fallback_chain('normalization', [
-    {'handler': 'ffmpeg', 'timeout': 60, 'retries': 2},
-])
+process_orchestrator.register_fallback_chain(
+    "normalization",
+    [
+        {"handler": "ffmpeg", "timeout": 60, "retries": 2},
+    ],
+)
 
-process_orchestrator.register_fallback_chain('recording', [
-    {'handler': 'ffmpeg_dshow', 'timeout': 0, 'retries': 1},  # No timeout for recording
-])
+process_orchestrator.register_fallback_chain(
+    "recording",
+    [
+        {
+            "handler": "ffmpeg_dshow",
+            "timeout": 0,
+            "retries": 1,
+        },  # No timeout for recording
+    ],
+)

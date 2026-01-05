@@ -25,20 +25,24 @@ logger = get_core_logger()
 @dataclass
 class RateLimitConfig:
     """Configuration for rate limiting."""
+
     requests_per_minute: int = 60
     burst_size: int = 10
     enabled: bool = True
     # Paths to exclude from rate limiting
-    excluded_paths: List[str] = field(default_factory=lambda: [
-        "/api/health",
-        "/api/health/ready",
-        "/api/health/metrics",
-    ])
+    excluded_paths: List[str] = field(
+        default_factory=lambda: [
+            "/api/health",
+            "/api/health/ready",
+            "/api/health/metrics",
+        ]
+    )
 
 
 @dataclass
 class ClientMetrics:
     """Metrics for a single client."""
+
     request_times: List[float] = field(default_factory=list)
     blocked_count: int = 0
     last_blocked: Optional[float] = None
@@ -86,8 +90,7 @@ class SlidingWindowRateLimiter:
             ]
             # Remove inactive clients (no requests in last 10 minutes)
             if not metrics.request_times and (
-                metrics.last_blocked is None or
-                now - metrics.last_blocked > 600
+                metrics.last_blocked is None or now - metrics.last_blocked > 600
             ):
                 clients_to_remove.append(client_id)
 
@@ -97,10 +100,7 @@ class SlidingWindowRateLimiter:
         self._last_cleanup = now
 
         if clients_to_remove:
-            logger.debug(
-                "rate_limiter_cleanup",
-                removed_clients=len(clients_to_remove)
-            )
+            logger.debug("rate_limiter_cleanup", removed_clients=len(clients_to_remove))
 
     def is_allowed(self, request: Request) -> Tuple[bool, Dict]:
         """
@@ -155,7 +155,7 @@ class SlidingWindowRateLimiter:
                     client_id=client_id,
                     request_count=current_count,
                     limit=self.config.requests_per_minute,
-                    blocked_count=metrics.blocked_count
+                    blocked_count=metrics.blocked_count,
                 )
 
                 return False, metadata
@@ -174,9 +174,7 @@ class SlidingWindowRateLimiter:
             now = time.time()
             window_start = now - 60
 
-            recent_requests = [
-                t for t in metrics.request_times if t > window_start
-            ]
+            recent_requests = [t for t in metrics.request_times if t > window_start]
 
             return {
                 "requests_in_window": len(recent_requests),
@@ -198,7 +196,7 @@ class SlidingWindowRateLimiter:
                     "burst_size": self.config.burst_size,
                     "enabled": self.config.enabled,
                 },
-                "clients": {}
+                "clients": {},
             }
 
             for client_id, metrics in self._clients.items():
@@ -234,7 +232,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 content={
                     "detail": "Rate limit exceeded",
                     "retry_after": metadata["reset"],
-                }
+                },
             )
         else:
             response = await call_next(request)
@@ -253,13 +251,13 @@ _rate_limiter: Optional[SlidingWindowRateLimiter] = None
 _rate_limiter_lock = threading.Lock()
 
 
-def get_rate_limiter(config: Optional[RateLimitConfig] = None) -> SlidingWindowRateLimiter:
+def get_rate_limiter(
+    config: Optional[RateLimitConfig] = None,
+) -> SlidingWindowRateLimiter:
     """Get or create the global rate limiter instance."""
     global _rate_limiter
     if _rate_limiter is None:
         with _rate_limiter_lock:
             if _rate_limiter is None:
-                _rate_limiter = SlidingWindowRateLimiter(
-                    config or RateLimitConfig()
-                )
+                _rate_limiter = SlidingWindowRateLimiter(config or RateLimitConfig())
     return _rate_limiter

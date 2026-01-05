@@ -28,7 +28,7 @@ if sys.platform != "win32":
 from .windows_audio_monitor import (
     WindowsAudioSessionMonitor,
     AudioSessionEvent,
-    AudioSessionState
+    AudioSessionState,
 )
 from .process_monitor import ProcessMonitor, ProcessEvent
 from ..core.logging_config import get_logger
@@ -38,15 +38,17 @@ logger = get_logger(__name__)
 
 class CallState(Enum):
     """States in the call detection state machine."""
-    NO_CALL = "no_call"           # No call detected
+
+    NO_CALL = "no_call"  # No call detected
     CALL_STARTING = "call_starting"  # Audio session detected, confirming
-    CALL_ACTIVE = "call_active"      # Recording in progress
-    CALL_ENDING = "call_ending"      # Audio stopped, confirming
+    CALL_ACTIVE = "call_active"  # Recording in progress
+    CALL_ENDING = "call_ending"  # Audio stopped, confirming
 
 
 @dataclass
 class CallInfo:
     """Information about a detected call."""
+
     call_id: str
     process_name: str
     process_id: int
@@ -62,6 +64,7 @@ class CallInfo:
 @dataclass
 class CallDetectorConfig:
     """Configuration for call detection."""
+
     # Feature toggle
     enabled: bool = False
 
@@ -75,14 +78,14 @@ class CallDetectorConfig:
     finesse_url_pattern: str = "finesse"  # Match in window title
 
     # Timing
-    call_start_confirm_seconds: float = 1.0   # Confirm audio active for 1s
-    call_end_confirm_seconds: float = 2.0     # Confirm audio inactive for 2s
-    audio_poll_interval: float = 0.5          # How often to poll audio sessions
-    process_poll_interval: float = 2.0        # How often to poll processes
+    call_start_confirm_seconds: float = 1.0  # Confirm audio active for 1s
+    call_end_confirm_seconds: float = 2.0  # Confirm audio inactive for 2s
+    audio_poll_interval: float = 0.5  # How often to poll audio sessions
+    process_poll_interval: float = 2.0  # How often to poll processes
 
     # Safety
-    max_call_duration_minutes: int = 180      # Auto-stop after 3 hours
-    min_call_duration_seconds: int = 5        # Discard calls shorter than 5s
+    max_call_duration_minutes: int = 180  # Auto-stop after 3 hours
+    min_call_duration_seconds: int = 5  # Discard calls shorter than 5s
 
 
 class CallDetector:
@@ -139,21 +142,19 @@ class CallDetector:
             "call_detector_starting",
             targets=all_targets,
             confirm_start_s=config.call_start_confirm_seconds,
-            confirm_end_s=config.call_end_confirm_seconds
+            confirm_end_s=config.call_end_confirm_seconds,
         )
 
         # Initialize Tier 2: Process monitor
         self._process_monitor = ProcessMonitor(
-            target_processes=all_targets,
-            poll_interval=config.process_poll_interval
+            target_processes=all_targets, poll_interval=config.process_poll_interval
         )
         self._process_monitor.add_callback(self._handle_process_event)
         self._process_monitor.start()
 
         # Initialize Tier 1: Audio session monitor
         self._audio_monitor = WindowsAudioSessionMonitor(
-            target_processes=all_targets,
-            poll_interval=config.audio_poll_interval
+            target_processes=all_targets, poll_interval=config.audio_poll_interval
         )
         self._audio_monitor.add_callback(self._handle_audio_event)
         self._audio_monitor.start()
@@ -212,24 +213,42 @@ class CallDetector:
         return {
             "enabled": self._running,
             "state": self._current_state.value,
-            "current_call": {
-                "call_id": self._current_call.call_id,
-                "process_name": self._current_call.process_name,
-                "process_id": self._current_call.process_id,
-                "started_at": self._current_call.started_at.isoformat(),
-                "duration_seconds": (
-                    datetime.now() - self._current_call.started_at
-                ).total_seconds()
-            } if self._current_call else None,
+            "current_call": (
+                {
+                    "call_id": self._current_call.call_id,
+                    "process_name": self._current_call.process_name,
+                    "process_id": self._current_call.process_id,
+                    "started_at": self._current_call.started_at.isoformat(),
+                    "duration_seconds": (
+                        datetime.now() - self._current_call.started_at
+                    ).total_seconds(),
+                }
+                if self._current_call
+                else None
+            ),
             "monitors": {
-                "audio": self._audio_monitor.is_running if self._audio_monitor else False,
-                "process": self._process_monitor.is_running if self._process_monitor else False,
+                "audio": (
+                    self._audio_monitor.is_running if self._audio_monitor else False
+                ),
+                "process": (
+                    self._process_monitor.is_running if self._process_monitor else False
+                ),
             },
-            "config": {
-                "target_processes": self._config.target_processes if self._config else [],
-                "call_start_confirm_seconds": self._config.call_start_confirm_seconds if self._config else 0,
-                "call_end_confirm_seconds": self._config.call_end_confirm_seconds if self._config else 0,
-            } if self._config else None
+            "config": (
+                {
+                    "target_processes": (
+                        self._config.target_processes if self._config else []
+                    ),
+                    "call_start_confirm_seconds": (
+                        self._config.call_start_confirm_seconds if self._config else 0
+                    ),
+                    "call_end_confirm_seconds": (
+                        self._config.call_end_confirm_seconds if self._config else 0
+                    ),
+                }
+                if self._config
+                else None
+            ),
         }
 
     def _handle_process_event(self, event: ProcessEvent) -> None:
@@ -238,7 +257,7 @@ class CallDetector:
             "call_detector_process_event",
             event_type=event.event_type,
             process=event.process_name,
-            pid=event.process_id
+            pid=event.process_id,
         )
 
         # Process events are primarily for logging/debugging
@@ -251,7 +270,7 @@ class CallDetector:
             process=event.process_name,
             pid=event.process_id,
             state=event.state.name,
-            current_state=self._current_state.value
+            current_state=self._current_state.value,
         )
 
         # State machine transitions
@@ -266,8 +285,7 @@ class CallDetector:
             # Transition to CALL_STARTING
             self._transition_to(CallState.CALL_STARTING, event)
             self._schedule_confirmation(
-                self._config.call_start_confirm_seconds,
-                self._confirm_call_start
+                self._config.call_start_confirm_seconds, self._confirm_call_start
             )
 
         elif self._current_state == CallState.CALL_ENDING:
@@ -286,14 +304,11 @@ class CallDetector:
             # Transition to CALL_ENDING
             self._transition_to(CallState.CALL_ENDING)
             self._schedule_confirmation(
-                self._config.call_end_confirm_seconds,
-                self._confirm_call_end
+                self._config.call_end_confirm_seconds, self._confirm_call_end
             )
 
     def _transition_to(
-        self,
-        new_state: CallState,
-        event: Optional[AudioSessionEvent] = None
+        self, new_state: CallState, event: Optional[AudioSessionEvent] = None
     ) -> None:
         """Transition to a new state."""
         old_state = self._current_state
@@ -304,7 +319,7 @@ class CallDetector:
             "call_state_transition",
             from_state=old_state.value,
             to_state=new_state.value,
-            process=event.process_name if event else None
+            process=event.process_name if event else None,
         )
 
         # Create call info on CALL_STARTING
@@ -315,27 +330,22 @@ class CallDetector:
                 process_name=event.process_name,
                 process_id=event.process_id,
                 state=new_state,
-                started_at=datetime.now()
+                started_at=datetime.now(),
             )
 
-    def _schedule_confirmation(
-        self,
-        delay_seconds: float,
-        callback: Callable
-    ) -> None:
+    def _schedule_confirmation(self, delay_seconds: float, callback: Callable) -> None:
         """Schedule a confirmation callback after delay."""
         self._cancel_confirmation()
 
         if self._loop:
             self._confirmation_task = self._loop.call_later(
-                delay_seconds,
-                lambda: asyncio.create_task(callback())
+                delay_seconds, lambda: asyncio.create_task(callback())
             )
 
     def _cancel_confirmation(self) -> None:
         """Cancel any pending confirmation."""
         if self._confirmation_task:
-            if hasattr(self._confirmation_task, 'cancel'):
+            if hasattr(self._confirmation_task, "cancel"):
                 self._confirmation_task.cancel()
             self._confirmation_task = None
 
@@ -361,7 +371,7 @@ class CallDetector:
             logger.info(
                 "call_started",
                 call_id=self._current_call.call_id,
-                process=self._current_call.process_name
+                process=self._current_call.process_name,
             )
 
             # Fire callbacks
@@ -400,18 +410,22 @@ class CallDetector:
         ).total_seconds()
 
         # Check minimum duration
-        if self._config and self._current_call.duration_seconds < self._config.min_call_duration_seconds:
+        if (
+            self._config
+            and self._current_call.duration_seconds
+            < self._config.min_call_duration_seconds
+        ):
             logger.info(
                 "call_discarded_too_short",
                 call_id=self._current_call.call_id,
                 duration=self._current_call.duration_seconds,
-                min_duration=self._config.min_call_duration_seconds
+                min_duration=self._config.min_call_duration_seconds,
             )
         else:
             logger.info(
                 "call_ended",
                 call_id=self._current_call.call_id,
-                duration=self._current_call.duration_seconds
+                duration=self._current_call.duration_seconds,
             )
 
             # Fire callbacks

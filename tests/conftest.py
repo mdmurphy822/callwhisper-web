@@ -19,7 +19,41 @@ from httpx import AsyncClient, ASGITransport
 
 # Add src to path for imports
 import sys
+import os
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
+
+# =============================================================================
+# Disable rate limiting for all tests by patching get_settings
+# This must happen BEFORE the app module is imported
+# =============================================================================
+def _create_test_settings():
+    """Create settings with rate limiting disabled for testing."""
+    from callwhisper.core.config import Settings, SecurityConfig
+
+    # Create settings with rate limiting disabled and debug endpoints enabled
+    security = SecurityConfig(
+        rate_limit_enabled=False,
+        debug_endpoints_enabled=True,  # Enable debug endpoints for testing
+    )
+    return Settings(security=security)
+
+
+# Patch get_settings before any test imports the app
+_original_get_settings = None
+
+
+def _patched_get_settings():
+    """Return settings with rate limiting disabled."""
+    return _create_test_settings()
+
+
+# Apply the patch at module load time
+from callwhisper.core import config as config_module
+_original_get_settings = config_module.get_settings
+config_module.get_settings = _patched_get_settings
+# Also clear the lru_cache to ensure fresh settings
+config_module.get_settings.cache_clear = lambda: None  # No-op since we replaced it
 
 
 @pytest.fixture(scope="session")
@@ -151,23 +185,19 @@ def reset_app_state():
     """Reset application state before and after tests."""
     from callwhisper.core.state import app_state, AppState
 
-    # Reset before test
-    app_state._state = AppState.IDLE
-    app_state._current_session = None
-    app_state._completed_recordings = []
-    app_state._error_message = None
-    app_state._progress = 0
-    app_state._progress_message = ""
+    # Reset before test - use PUBLIC attributes (no underscore prefix)
+    app_state.state = AppState.IDLE
+    app_state.current_session = None
+    app_state.completed_recordings = []
+    app_state.elapsed_seconds = 0
 
     yield
 
     # Reset after test
-    app_state._state = AppState.IDLE
-    app_state._current_session = None
-    app_state._completed_recordings = []
-    app_state._error_message = None
-    app_state._progress = 0
-    app_state._progress_message = ""
+    app_state.state = AppState.IDLE
+    app_state.current_session = None
+    app_state.completed_recordings = []
+    app_state.elapsed_seconds = 0
 
 
 @pytest.fixture

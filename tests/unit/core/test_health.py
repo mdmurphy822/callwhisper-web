@@ -7,6 +7,7 @@ Tests system health validation:
 - Error handling
 """
 
+import sys
 import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
@@ -19,6 +20,9 @@ from callwhisper.core.health import (
     get_health_checker,
     configure_health_checker,
 )
+
+# Skip Windows-specific dshow tests on Linux
+WINDOWS_ONLY = pytest.mark.skipif(sys.platform != 'win32', reason="Windows dshow format")
 
 
 class TestCheckResult:
@@ -231,6 +235,7 @@ class TestHealthChecker:
         assert result.healthy is True
         assert result.details.get("skipped") is True
 
+    @WINDOWS_ONLY
     @patch("subprocess.run")
     def test_check_audio_device_found(self, mock_run, checker):
         """check_audio_device succeeds when device is found."""
@@ -539,6 +544,7 @@ class TestAudioDeviceEdgeCases:
     def checker(self):
         return HealthChecker()
 
+    @WINDOWS_ONLY
     @patch("subprocess.run")
     def test_device_name_case_insensitive(self, mock_run, checker):
         """Device name matching should be case-insensitive."""
@@ -551,6 +557,7 @@ class TestAudioDeviceEdgeCases:
 
         assert result.healthy is True
 
+    @WINDOWS_ONLY
     @patch("subprocess.run")
     def test_device_partial_match(self, mock_run, checker):
         """Partial device name should match."""
@@ -563,6 +570,7 @@ class TestAudioDeviceEdgeCases:
 
         assert result.healthy is True
 
+    @WINDOWS_ONLY
     @patch("subprocess.run")
     def test_device_unicode_name(self, mock_run, checker):
         """Handle Unicode device names."""
@@ -575,6 +583,7 @@ class TestAudioDeviceEdgeCases:
 
         assert result.healthy is True
 
+    @WINDOWS_ONLY
     @patch("subprocess.run")
     def test_device_special_characters(self, mock_run, checker):
         """Handle special characters in device names."""

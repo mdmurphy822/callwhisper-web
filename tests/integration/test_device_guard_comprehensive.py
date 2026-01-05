@@ -11,8 +11,12 @@ These tests verify that the device guard:
 5. Maintains fail-safe behavior
 """
 
+import sys
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
+
+# Platform markers for Windows-specific tests
+WINDOWS_ONLY = pytest.mark.skipif(sys.platform != 'win32', reason="Windows-specific device names")
 from httpx import AsyncClient, ASGITransport
 
 from callwhisper.services.device_guard import (
@@ -147,8 +151,9 @@ class TestMicrophoneBlocking:
 
 
 @pytest.mark.integration
+@WINDOWS_ONLY
 class TestAllowedDevices:
-    """Verify approved devices are allowed."""
+    """Verify approved devices are allowed (Windows-specific device names)."""
 
     @pytest.mark.parametrize("device_name", [
         "VB-Cable Output",
@@ -240,20 +245,23 @@ class TestEdgeCases:
         assert is_device_safe("microphone", default_config) is False
         assert is_device_safe("MiCrOpHoNe", default_config) is False
 
+    @WINDOWS_ONLY
     def test_case_insensitive_allowing(self, default_config):
-        """Allowing should be case-insensitive."""
+        """Allowing should be case-insensitive (Windows-specific device names)."""
         assert is_device_safe("STEREO MIX", default_config) is True
         assert is_device_safe("stereo mix", default_config) is True
         assert is_device_safe("Stereo Mix", default_config) is True
 
+    @WINDOWS_ONLY
     def test_microphone_output_allowed(self, default_config):
-        """Microphone Output (loopback) should be allowed."""
+        """Microphone Output (loopback) should be allowed (Windows-specific)."""
         # This is a special case - routing microphone to output
         assert is_device_safe("Microphone Output", default_config) is True
         assert is_device_safe("Mic Output", default_config) is True
 
+    @WINDOWS_ONLY
     def test_speakers_allowed(self, default_config):
-        """Speakers with output indicator should be allowed."""
+        """Speakers with output indicator should be allowed (Windows-specific)."""
         assert is_device_safe("Speakers (Realtek Audio)", default_config) is True
         assert is_device_safe("Speaker (USB)", default_config) is True
 
@@ -347,8 +355,9 @@ class TestConfigurationOverrides:
         # If both lists match, blocklist wins
         assert is_device_safe("AudioDevice", config) is False
 
+    @WINDOWS_ONLY
     def test_empty_allowlist_uses_default_patterns(self):
-        """Empty allowlist still uses default safe patterns."""
+        """Empty allowlist still uses default safe patterns (Windows-specific)."""
         config = DeviceGuardConfig(allowlist=[])
         # Default patterns should still match
         assert is_device_safe("VB-Cable Output", config) is True
@@ -424,8 +433,9 @@ class TestValidateDeviceForRecording:
         assert "Microphone (Realtek)" in error_message
         assert "approved output devices" in error_message.lower()
 
+    @WINDOWS_ONLY
     def test_no_raise_for_safe_device(self, default_config):
-        """Does not raise for approved devices."""
+        """Does not raise for approved devices (Windows-specific)."""
         # Should not raise
         validate_device_for_recording("VB-Cable Output", default_config)
         validate_device_for_recording("Stereo Mix", default_config)
@@ -437,8 +447,9 @@ class TestValidateDeviceForRecording:
 
 
 @pytest.mark.integration
+@WINDOWS_ONLY
 class TestGetSafeDevices:
-    """Test get_safe_devices filtering function."""
+    """Test get_safe_devices filtering function (Windows-specific device names)."""
 
     def test_filters_mixed_device_list(self, default_config):
         """Correctly filters a mixed list of devices."""
@@ -509,8 +520,9 @@ class TestLogDeviceDecision:
         log = log_device_decision("Test Device", default_config)
         assert "Test Device" in log
 
+    @WINDOWS_ONLY
     def test_log_shows_allowed(self, default_config):
-        """Log shows ALLOWED for safe devices."""
+        """Log shows ALLOWED for safe devices (Windows-specific)."""
         log = log_device_decision("VB-Cable Output", default_config)
         assert "ALLOWED" in log
 
@@ -584,8 +596,9 @@ class TestAPIDeviceGuardIntegration:
 
 
 @pytest.mark.integration
+@WINDOWS_ONLY
 class TestPatternCoverage:
-    """Verify pattern coverage is comprehensive."""
+    """Verify pattern coverage is comprehensive (Windows-specific device patterns)."""
 
     def test_all_default_safe_patterns_work(self, default_config):
         """Each safe pattern should match at least one device."""

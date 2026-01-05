@@ -5,7 +5,7 @@ import json
 from functools import lru_cache
 from typing import List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from ..utils.paths import get_data_dir
 
@@ -53,6 +53,13 @@ class ServerConfig(BaseModel):
     port: int = 8765
     open_browser: bool = True
 
+    @field_validator("port")
+    @classmethod
+    def validate_port(cls, v: int) -> int:
+        if v < 0 or v > 65535:
+            raise ValueError("Port must be between 0 and 65535")
+        return v
+
 
 class AudioConfig(BaseModel):
     """Audio capture configuration."""
@@ -60,6 +67,20 @@ class AudioConfig(BaseModel):
     sample_rate: int = 44100
     channels: int = 2
     format: str = "pcm_s16le"
+
+    @field_validator("sample_rate")
+    @classmethod
+    def validate_sample_rate(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("Sample rate must be non-negative")
+        return v
+
+    @field_validator("channels")
+    @classmethod
+    def validate_channels(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("Channels must be non-negative")
+        return v
 
 
 class TranscriptionConfig(BaseModel):
@@ -69,6 +90,35 @@ class TranscriptionConfig(BaseModel):
     language: str = "en"
     beam_size: int = 5
     best_of: int = 5
+
+    @field_validator("language")
+    @classmethod
+    def validate_language(cls, v: str) -> str:
+        # Empty string is valid (means auto-detect or use default)
+        if v == "":
+            return v
+        # Language codes: 2-5 chars, alphanumeric with optional hyphen (e.g., "en", "zh-CN")
+        if len(v) < 2 or len(v) > 5:
+            raise ValueError("Language code must be 2-5 characters")
+        if not all(c.isalnum() or c == "-" for c in v):
+            raise ValueError(
+                "Language code must be alphanumeric (with optional hyphen)"
+            )
+        return v.lower()
+
+    @field_validator("beam_size")
+    @classmethod
+    def validate_beam_size(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("Beam size must be non-negative")
+        return v
+
+    @field_validator("best_of")
+    @classmethod
+    def validate_best_of(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("Best of must be non-negative")
+        return v
 
 
 class OutputConfig(BaseModel):
@@ -119,6 +169,20 @@ class SecurityConfig(BaseModel):
     # When False, /api/debug/* endpoints return 404
     debug_endpoints_enabled: bool = False
 
+    @field_validator("rate_limit_rpm")
+    @classmethod
+    def validate_rate_limit_rpm(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("Rate limit RPM must be non-negative")
+        return v
+
+    @field_validator("rate_limit_burst")
+    @classmethod
+    def validate_rate_limit_burst(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("Rate limit burst must be non-negative")
+        return v
+
 
 class PerformanceConfig(BaseModel):
     """Performance tuning configuration."""
@@ -136,6 +200,41 @@ class PerformanceConfig(BaseModel):
     audio_pool_size: int = 2
     transcription_pool_size: int = 2
     io_pool_size: int = 4
+
+    @field_validator("max_concurrent_transcriptions")
+    @classmethod
+    def validate_max_concurrent(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("Max concurrent transcriptions must be non-negative")
+        return v
+
+    @field_validator("chunk_size_seconds")
+    @classmethod
+    def validate_chunk_size(cls, v: float) -> float:
+        if v < 0:
+            raise ValueError("Chunk size must be non-negative")
+        return v
+
+    @field_validator("cache_ttl_seconds")
+    @classmethod
+    def validate_cache_ttl(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("Cache TTL must be non-negative")
+        return v
+
+    @field_validator("cache_max_entries")
+    @classmethod
+    def validate_cache_max_entries(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("Cache max entries must be non-negative")
+        return v
+
+    @field_validator("audio_pool_size", "transcription_pool_size", "io_pool_size")
+    @classmethod
+    def validate_pool_sizes(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("Pool size must be non-negative")
+        return v
 
 
 class TimeoutConfig(BaseModel):

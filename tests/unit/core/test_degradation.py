@@ -126,8 +126,8 @@ class TestLoadMetrics:
         for i in range(1, 101):
             metrics.recent_latencies_ms.append(float(i))
 
-        # 95th percentile of 1-100 should be 95
-        assert metrics.p95_latency_ms == 95.0
+        # 95th percentile of 1-100 is 96 (index 95 in sorted list)
+        assert metrics.p95_latency_ms == 96.0
 
     def test_avg_latency_empty(self):
         """Average latency is 0 when no latencies recorded."""

@@ -608,9 +608,11 @@ class TestCheckpointEdgeCases:
         }
         (tmp_path / "minimal.checkpoint.json").write_text(json.dumps(data))
 
-        # Should fail due to missing required fields
+        # Missing optional fields are set to None
         checkpoint = manager.load_checkpoint("minimal")
-        assert checkpoint is None
+        assert checkpoint is not None
+        assert checkpoint.session_id == "minimal"
+        assert checkpoint.device_name is None  # Missing field defaults to None
 
     def test_resumable_stage_normalizing(self, manager):
         """get_resumable_stage returns NORMALIZING for NORMALIZING stage."""

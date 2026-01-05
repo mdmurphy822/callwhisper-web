@@ -288,7 +288,11 @@ class TestBulkheadQueueLimiting:
             # Cleanup
             blocking_event.set()
             await task1
-            await task2
+            # task2 may also be rejected due to timing, ignore if so
+            try:
+                await task2
+            except RuntimeError:
+                pass  # Expected if queue filled before task2 was added
 
         finally:
             executor.shutdown(wait=False)

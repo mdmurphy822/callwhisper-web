@@ -11,7 +11,9 @@ Tests the export system including:
 """
 
 import asyncio
+import importlib.util
 import pytest
+import sys
 import zipfile
 import json
 import csv
@@ -507,8 +509,8 @@ class TestCreateVTBBundle:
         """Basic VTB bundle creation."""
         with patch("callwhisper.services.bundler.convert_to_opus") as mock_convert:
             with patch("callwhisper.services.bundler.get_audio_duration", return_value=60.0):
-                with patch("callwhisper.services.bundler.__version__", "1.0.0"):
-                    with patch("callwhisper.services.bundler.__app_name__", "CallWhisper"):
+                with patch("callwhisper.__version__", "1.0.0"):
+                    with patch("callwhisper.__app_name__", "CallWhisper"):
                         mock_convert.return_value = sample_recording_folder / "recording.opus"
                         # Create fake opus file
                         (sample_recording_folder / "recording.opus").write_bytes(b'\x00' * 100)
@@ -527,8 +529,8 @@ class TestCreateVTBBundle:
     async def test_create_vtb_wav_format(self, sample_recording_folder, mock_session, mock_settings):
         """VTB bundle with WAV audio."""
         with patch("callwhisper.services.bundler.get_audio_duration", return_value=60.0):
-            with patch("callwhisper.services.bundler.__version__", "1.0.0"):
-                with patch("callwhisper.services.bundler.__app_name__", "CallWhisper"):
+            with patch("callwhisper.__version__", "1.0.0"):
+                with patch("callwhisper.__app_name__", "CallWhisper"):
                     mock_settings.output.audio_format = "wav"
                     bundle = await create_vtb_bundle(
                         sample_recording_folder,
@@ -552,8 +554,8 @@ class TestCreateVTBBundle:
     async def test_create_vtb_includes_manifest(self, sample_recording_folder, mock_session, mock_settings):
         """Bundle includes manifest."""
         with patch("callwhisper.services.bundler.get_audio_duration", return_value=60.0):
-            with patch("callwhisper.services.bundler.__version__", "1.0.0"):
-                with patch("callwhisper.services.bundler.__app_name__", "CallWhisper"):
+            with patch("callwhisper.__version__", "1.0.0"):
+                with patch("callwhisper.__app_name__", "CallWhisper"):
                     mock_settings.output.audio_format = "wav"
                     bundle = await create_vtb_bundle(
                         sample_recording_folder,
@@ -571,8 +573,8 @@ class TestCreateVTBBundle:
     async def test_create_vtb_includes_hashes(self, sample_recording_folder, mock_session, mock_settings):
         """Bundle includes hash file."""
         with patch("callwhisper.services.bundler.get_audio_duration", return_value=60.0):
-            with patch("callwhisper.services.bundler.__version__", "1.0.0"):
-                with patch("callwhisper.services.bundler.__app_name__", "CallWhisper"):
+            with patch("callwhisper.__version__", "1.0.0"):
+                with patch("callwhisper.__app_name__", "CallWhisper"):
                     mock_settings.output.audio_format = "wav"
                     bundle = await create_vtb_bundle(
                         sample_recording_folder,
@@ -779,8 +781,8 @@ class TestBundleAndExportWorkflow:
         """Full workflow: create bundle, extract, export."""
         # Create bundle
         with patch("callwhisper.services.bundler.get_audio_duration", return_value=60.0):
-            with patch("callwhisper.services.bundler.__version__", "1.0.0"):
-                with patch("callwhisper.services.bundler.__app_name__", "CallWhisper"):
+            with patch("callwhisper.__version__", "1.0.0"):
+                with patch("callwhisper.__app_name__", "CallWhisper"):
                     mock_settings.output.audio_format = "wav"
                     bundle = await create_vtb_bundle(
                         sample_recording_folder,
@@ -811,8 +813,8 @@ class TestBundleAndExportWorkflow:
 
         # Create bundle
         with patch("callwhisper.services.bundler.get_audio_duration", return_value=60.0):
-            with patch("callwhisper.services.bundler.__version__", "1.0.0"):
-                with patch("callwhisper.services.bundler.__app_name__", "CallWhisper"):
+            with patch("callwhisper.__version__", "1.0.0"):
+                with patch("callwhisper.__app_name__", "CallWhisper"):
                     mock_settings.output.audio_format = "wav"
                     bundle = await create_vtb_bundle(
                         sample_recording_folder,
@@ -840,7 +842,7 @@ class TestExportEdgeCases:
         """Export handles unicode content."""
         # Create transcript with unicode
         (temp_dir / "transcript.txt").write_text(
-            "Unicode: \u00e9\u00e8\u00ea\u00eb \u4e2d\u6587 \ud83c\udf89",
+            "Unicode: \u00e9\u00e8\u00ea\u00eb \u4e2d\u6587 \U0001F389",
             encoding="utf-8"
         )
         (temp_dir / "transcript.srt").write_text(
@@ -897,6 +899,10 @@ class TestExportErrorHandling:
     """Error handling tests for export functionality."""
 
     @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        importlib.util.find_spec("reportlab") is not None,
+        reason="reportlab is installed"
+    )
     async def test_export_pdf_missing_reportlab(self, sample_output_folder):
         """PDF export fails gracefully without reportlab."""
         exporter = TranscriptExporter(sample_output_folder)

@@ -305,6 +305,22 @@ class AudioDurationError(CallWhisperError):
         )
 
 
+class AudioProcessingError(CallWhisperError):
+    """Raised when audio processing fails."""
+
+    def __init__(
+        self,
+        reason: str,
+        audio_path: Optional[str] = None,
+        cause: Optional[Exception] = None,
+    ):
+        super().__init__(
+            f"Audio processing failed: {reason}",
+            details={"audio_path": audio_path, "reason": reason},
+            cause=cause,
+        )
+
+
 # Persistence exceptions
 class MetricsPersistenceError(CallWhisperError):
     """Raised when metrics cannot be saved or loaded."""

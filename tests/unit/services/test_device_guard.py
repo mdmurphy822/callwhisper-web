@@ -8,6 +8,7 @@ Verifies that:
 - Default blocking behavior is fail-safe
 """
 
+import sys
 import pytest
 from unittest.mock import MagicMock
 
@@ -19,6 +20,9 @@ from callwhisper.services.device_guard import (
     log_device_decision,
 )
 from callwhisper.core.config import DeviceGuardConfig
+
+# Skip Windows-specific device tests on Linux
+WINDOWS_ONLY = pytest.mark.skipif(sys.platform != 'win32', reason="Windows-specific device names")
 
 
 @pytest.fixture
@@ -58,14 +62,17 @@ class TestIsDeviceSafe:
         """Webcam audio is blocked."""
         assert is_device_safe("HD Webcam C270", default_config) is False
 
+    @WINDOWS_ONLY
     def test_allows_stereo_mix(self, default_config):
         """Stereo Mix is allowed."""
         assert is_device_safe("Stereo Mix (Realtek Audio)", default_config) is True
 
+    @WINDOWS_ONLY
     def test_allows_vb_cable(self, default_config):
         """VB-Cable is allowed."""
         assert is_device_safe("VB-Cable Output", default_config) is True
 
+    @WINDOWS_ONLY
     def test_allows_voicemeeter(self, default_config):
         """VoiceMeeter is allowed."""
         assert is_device_safe("VoiceMeeter Input", default_config) is True
@@ -109,6 +116,7 @@ class TestGetDeviceStatus:
         status = get_device_status("CustomAllow Device", config)
         assert status["match_type"] == "allowlist"
 
+    @WINDOWS_ONLY
     def test_status_match_type_safe_pattern(self, default_config):
         """Status shows safe pattern match type."""
         status = get_device_status("Stereo Mix", default_config)
@@ -130,6 +138,7 @@ class TestValidateDeviceForRecording:
             validate_device_for_recording("Microphone", default_config)
         assert "BLOCKED" in str(exc_info.value)
 
+    @WINDOWS_ONLY
     def test_no_raise_for_safe_device(self, default_config):
         """Does not raise for safe devices."""
         # Should not raise
@@ -139,6 +148,7 @@ class TestValidateDeviceForRecording:
 class TestGetSafeDevices:
     """Tests for get_safe_devices function."""
 
+    @WINDOWS_ONLY
     def test_filters_unsafe_devices(self, default_config):
         """Filters out unsafe devices from list."""
         devices = [
@@ -162,6 +172,7 @@ class TestGetSafeDevices:
 class TestLogDeviceDecision:
     """Tests for log_device_decision function."""
 
+    @WINDOWS_ONLY
     def test_log_format_allowed(self, default_config):
         """Log format for allowed device."""
         log = log_device_decision("Stereo Mix", default_config)

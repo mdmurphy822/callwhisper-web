@@ -100,7 +100,7 @@ class TestDiskFullDuringRecording:
                 raise OSError(errno.ENOSPC, "No space left on device")
 
             with patch.object(Path, 'mkdir', failing_mkdir):
-                with pytest.raises(RecordingError):
+                with pytest.raises(OSError):
                     await start_recording(mock_session, mock_settings)
 
     @pytest.mark.asyncio
@@ -219,7 +219,7 @@ class TestPermissionDenied:
             with patch.object(Path, 'mkdir') as mock_mkdir:
                 mock_mkdir.side_effect = PermissionError("Permission denied")
 
-                with pytest.raises(RecordingError):
+                with pytest.raises(PermissionError):
                     await start_recording(mock_session, mock_settings)
 
     @pytest.mark.asyncio

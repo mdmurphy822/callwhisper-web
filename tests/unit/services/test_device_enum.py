@@ -7,6 +7,7 @@ Tests FFmpeg audio device listing:
 - Device lookup by name
 """
 
+import sys
 import pytest
 from unittest.mock import patch, MagicMock
 import time
@@ -19,6 +20,9 @@ from callwhisper.services.device_enum import (
     _device_cache,
     CACHE_TTL_SECONDS,
 )
+
+# Skip Windows-specific dshow tests on Linux
+WINDOWS_ONLY = pytest.mark.skipif(sys.platform != 'win32', reason="Windows dshow format")
 
 
 class TestParseDeviceList:
@@ -80,6 +84,7 @@ class TestListAudioDevices:
         device_enum._device_cache = ([], 0)
         yield
 
+    @WINDOWS_ONLY
     def test_returns_devices_on_success(self):
         """Returns parsed devices on successful FFmpeg run."""
         mock_result = MagicMock()

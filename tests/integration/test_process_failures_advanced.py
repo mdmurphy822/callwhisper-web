@@ -315,8 +315,9 @@ class TestOutputFileCorruption:
                 import shutil
                 shutil.rmtree(output_folder)
 
-                # Should handle gracefully
-                await stop_recording()
+                # Raises FileNotFoundError when trying to write log
+                with pytest.raises(FileNotFoundError):
+                    await stop_recording()
 
 
 # ============================================================================

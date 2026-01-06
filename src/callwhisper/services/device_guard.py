@@ -18,7 +18,7 @@ from ..utils.platform import get_platform
 
 # Windows safe device patterns (case-insensitive)
 SAFE_PATTERNS_WINDOWS = [
-    r"vb-?cable",
+    r"vb[-\s]?cable",
     r"cable\s*output",
     r"virtual\s*(audio\s*)?cable",
     r"stereo\s*mix",
@@ -29,6 +29,7 @@ SAFE_PATTERNS_WINDOWS = [
     r"cisco",
     r"loopback",
     r"speakers?\s*\(",  # "Speakers (Device)" type names with output indicator
+    r"(microphone|mic)\s*out",  # Microphone Output loopback
 ]
 
 # Linux safe device patterns (case-insensitive)

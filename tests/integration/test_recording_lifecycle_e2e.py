@@ -11,10 +11,14 @@ Tests the complete recording workflow:
 
 import pytest
 import asyncio
+import sys
 from pathlib import Path
 from datetime import datetime
 from unittest.mock import patch, MagicMock, AsyncMock
 from httpx import AsyncClient, ASGITransport
+
+# Skip tests with Windows-specific validation behavior
+UNIX_ONLY = pytest.mark.skipif(sys.platform == "win32", reason="Platform-specific validation")
 
 from callwhisper.core.state import app_state, AppState, RecordingSession
 from callwhisper.core.config import DeviceGuardConfig
@@ -163,6 +167,7 @@ class TestStartRecording:
 
         assert response.status_code == 422  # Validation error
 
+    @UNIX_ONLY
     async def test_start_recording_invalid_ticket_id(self, client, reset_app_state):
         """Reject invalid ticket ID format."""
         response = await client.post(

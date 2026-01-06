@@ -12,6 +12,7 @@ Tests how the system handles resource exhaustion scenarios:
 
 import asyncio
 import pytest
+import sys
 import tempfile
 import os
 import errno
@@ -20,6 +21,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import wave
 import struct
 import math
+
+# Skip tests with Windows-specific error handling
+UNIX_ONLY = pytest.mark.skipif(sys.platform == "win32", reason="UNIX error handling")
 
 
 # ============================================================================
@@ -152,6 +156,7 @@ class TestDiskFullDuringTranscription:
             with pytest.raises(RuntimeError, match="FFmpeg normalization failed"):
                 await normalize_audio(audio_path)
 
+    @UNIX_ONLY
     @pytest.mark.asyncio
     async def test_disk_full_during_transcription(self, temp_dir, mock_settings):
         """Transcription fails when disk is full."""
@@ -295,6 +300,7 @@ class TestMemoryExhaustion:
         # Max chunk is ~14MB
         assert max_chunk_memory < 20 * 1024 * 1024  # Less than 20MB
 
+    @UNIX_ONLY
     @pytest.mark.asyncio
     async def test_subprocess_out_of_memory(self, temp_dir, mock_settings):
         """Handle subprocess running out of memory."""

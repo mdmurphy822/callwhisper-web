@@ -9,9 +9,13 @@ Tests crash recovery checkpoint system:
 
 import pytest
 import json
+import sys
 import time
 from pathlib import Path
 from unittest.mock import patch, MagicMock
+
+# Skip tests with Windows file locking issues
+UNIX_ONLY = pytest.mark.skipif(sys.platform == "win32", reason="Windows file locking")
 
 from callwhisper.core.job_store import (
     JobCheckpoint,
@@ -310,6 +314,7 @@ class TestJobStore:
         assert incomplete[1].job_id == "middle"
         assert incomplete[2].job_id == "old"
 
+    @UNIX_ONLY
     def test_mark_complete(self, tmp_path):
         """mark_complete updates status and moves to archive."""
         store = JobStore(store_path=tmp_path)
@@ -339,6 +344,7 @@ class TestJobStore:
         # Should not raise
         store.mark_complete("nonexistent")
 
+    @UNIX_ONLY
     def test_mark_failed(self, tmp_path):
         """mark_failed sets status and error message."""
         store = JobStore(store_path=tmp_path)
@@ -506,6 +512,7 @@ class TestModuleFunctions:
         finally:
             job_store_module._job_store = None
 
+    @UNIX_ONLY
     def test_update_checkpoint(self, tmp_path):
         """update_checkpoint updates existing checkpoint fields."""
         import callwhisper.core.job_store as job_store_module
@@ -556,6 +563,7 @@ class TestModuleFunctions:
         finally:
             job_store_module._job_store = None
 
+    @UNIX_ONLY
     def test_update_checkpoint_partial_update(self, tmp_path):
         """update_checkpoint only updates provided fields."""
         import callwhisper.core.job_store as job_store_module

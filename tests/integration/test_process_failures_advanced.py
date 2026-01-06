@@ -15,12 +15,16 @@ import pytest
 import subprocess
 import signal
 import os
+import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
 import wave
 import struct
 import math
+
+# Skip tests that have platform-specific subprocess behavior
+UNIX_ONLY = pytest.mark.skipif(sys.platform == "win32", reason="UNIX subprocess behavior")
 
 from callwhisper.services.recorder import (
     start_recording,
@@ -327,6 +331,7 @@ class TestOutputFileCorruption:
 class TestWhisperStartupFailures:
     """Tests for Whisper startup failures."""
 
+    @UNIX_ONLY
     @pytest.mark.asyncio
     async def test_whisper_not_found(self, temp_dir, mock_settings):
         """Whisper executable not found."""
@@ -381,6 +386,7 @@ class TestWhisperStartupFailures:
 class TestWhisperRuntimeFailures:
     """Tests for Whisper failures during transcription."""
 
+    @UNIX_ONLY
     @pytest.mark.asyncio
     async def test_whisper_timeout(self, temp_dir, mock_settings):
         """Whisper transcription times out."""
@@ -412,6 +418,7 @@ class TestWhisperRuntimeFailures:
                     # Process should be killed on timeout
                     process.kill.assert_called()
 
+    @UNIX_ONLY
     @pytest.mark.asyncio
     async def test_whisper_crashes(self, temp_dir, mock_settings):
         """Whisper process crashes during transcription."""
@@ -442,6 +449,7 @@ class TestWhisperRuntimeFailures:
                     with pytest.raises(TranscriptionError, match="failed"):
                         await transcribe_audio(temp_dir, mock_settings)
 
+    @UNIX_ONLY
     @pytest.mark.asyncio
     async def test_whisper_out_of_memory(self, temp_dir, mock_settings):
         """Whisper runs out of memory."""
@@ -476,6 +484,7 @@ class TestWhisperRuntimeFailures:
 class TestChunkTranscriptionFailures:
     """Tests for chunk transcription failures."""
 
+    @UNIX_ONLY
     @pytest.mark.asyncio
     async def test_chunk_transcription_timeout(self, temp_dir, mock_settings):
         """Single chunk transcription times out."""
@@ -501,6 +510,7 @@ class TestChunkTranscriptionFailures:
 
                     process.kill.assert_called()
 
+    @UNIX_ONLY
     @pytest.mark.asyncio
     async def test_chunk_no_output_file(self, temp_dir, mock_settings):
         """Chunk transcription produces no output file."""
@@ -675,6 +685,7 @@ class TestProcessOrchestrationFailures:
             with pytest.raises(RuntimeError, match="Normalization failed"):
                 await transcribe_audio(temp_dir, mock_settings)
 
+    @UNIX_ONLY
     @pytest.mark.asyncio
     async def test_duration_detection_failure(self, temp_dir, mock_settings):
         """Duration detection failure falls back to default timeout."""

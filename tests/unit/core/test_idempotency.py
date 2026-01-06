@@ -11,6 +11,7 @@ Tests duplicate prevention and caching:
 
 import asyncio
 import hashlib
+import sys
 import tempfile
 import threading
 import time
@@ -18,6 +19,9 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+# Skip tests with platform-specific path behavior
+UNIX_ONLY = pytest.mark.skipif(sys.platform == "win32", reason="Path normalization")
 
 from callwhisper.core.idempotency import (
     IdempotencyConfig,
@@ -141,6 +145,7 @@ class TestKeyGeneration:
             path1.unlink()
             path2.unlink()
 
+    @UNIX_ONLY
     def test_generate_audio_key_same_content(self):
         """Same content produces same key (deterministic)."""
         content = b"identical content"

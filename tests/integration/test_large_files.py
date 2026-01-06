@@ -10,11 +10,15 @@ Tests boundary conditions for large files:
 
 import asyncio
 import io
+import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
+
+# Skip tests that use UNIX-only APIs
+UNIX_ONLY = pytest.mark.skipif(sys.platform == "win32", reason="UNIX-only API")
 
 
 # ============================================================================
@@ -307,12 +311,13 @@ class TestProgressTrackingLargeFiles:
 class TestStorageSpace:
     """Tests for storage space handling."""
 
+    @UNIX_ONLY
     def test_check_available_space(self):
         """Available disk space is checked before large operations."""
         import os
 
         # Get actual disk usage
-        statvfs = os.statvfs('/')
+        statvfs = os.statvfs("/")
         available_bytes = statvfs.f_frsize * statvfs.f_bavail
 
         # Should have some space available

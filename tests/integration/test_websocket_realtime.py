@@ -233,7 +233,7 @@ class TestConnectionManagerConcurrency:
             broadcast_done.set()
 
         async def connect_new():
-            await broadcast_started.wait()
+            await asyncio.wait_for(broadcast_started.wait(), timeout=5.0)
             new_ws = AsyncMock(spec=WebSocket)
             new_ws.accept = AsyncMock()
             # This should not crash even during broadcast

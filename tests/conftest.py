@@ -56,14 +56,6 @@ config_module.get_settings = _patched_get_settings
 config_module.get_settings.cache_clear = lambda: None  # No-op since we replaced it
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create an event loop for async tests."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
-
-
 @pytest.fixture
 def temp_dir() -> Generator[Path, None, None]:
     """Create a temporary directory for test outputs."""

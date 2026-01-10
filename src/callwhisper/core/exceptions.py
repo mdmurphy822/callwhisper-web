@@ -284,6 +284,10 @@ class AllHandlersFailedError(ProcessError):
     def __init__(
         self, task_type: str, attempts: list, correlation_id: Optional[str] = None
     ):
+        self.task_type = task_type
+        self.attempts = attempts
+        self.correlation_id = correlation_id
+
         details = {"task_type": task_type, "attempts": attempts}
         if correlation_id:
             details["correlation_id"] = correlation_id

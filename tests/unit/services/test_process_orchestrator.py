@@ -479,7 +479,7 @@ class TestOrchestratorFallbackChain:
     async def test_execute_with_fallback_timeout(self, orchestrator):
         """execute_with_fallback handles timeout."""
         async def execute_fn(handler, **kwargs):
-            await asyncio.sleep(5)  # Longer than 1.0s timeout
+            await asyncio.sleep(2)  # Longer than 1.0s handler timeout, shorter than pytest timeout
             return "result"
 
         with pytest.raises(AllHandlersFailedError):

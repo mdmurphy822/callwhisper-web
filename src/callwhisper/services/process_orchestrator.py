@@ -162,7 +162,7 @@ class LoadAwareRouter:
         """
         self.load_threshold = load_threshold
         self._metrics: Dict[str, HandlerMetrics] = {}
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()  # RLock allows nested acquisition by same thread
 
     def _get_metrics(self, handler: str) -> HandlerMetrics:
         """Get or create metrics for a handler."""
@@ -369,7 +369,9 @@ class ProcessOrchestrator:
                 if elapsed >= self.cooldown_seconds:
                     # Transition to half-open
                     cb.state = CircuitState.HALF_OPEN
-                    self._half_open_calls[handler] = 0
+                    self._half_open_calls[handler] = (
+                        1  # Count this call as the first half-open call
+                    )
                     logger.info(
                         "circuit_half_open", handler=handler, cooldown_elapsed=elapsed
                     )

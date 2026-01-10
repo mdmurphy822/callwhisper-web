@@ -12,6 +12,7 @@ Key features:
 - Callback notifications for reactive updates
 """
 
+import asyncio
 from enum import Enum
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -226,6 +227,17 @@ class StateMachine:
         for callback in self._callbacks:
             try:
                 await callback(event)
+            except asyncio.CancelledError:
+                # Callback cancellation shouldn't break the state machine
+                logger.warning(
+                    "state_callback_cancelled",
+                    callback=(
+                        callback.__name__
+                        if hasattr(callback, "__name__")
+                        else str(callback)
+                    ),
+                    event_id=event.event_id,
+                )
             except Exception as e:
                 logger.error(
                     "state_callback_error",

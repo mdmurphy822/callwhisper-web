@@ -70,7 +70,7 @@ class TestAdaptiveTimeout:
     def test_fractional_duration(self):
         """Fractional durations are handled."""
         timeout = calculate_adaptive_timeout(50.5)
-        assert timeout == MIN_TIMEOUT_SECONDS  # 50.5 * 3 = 151.5 -> 151
+        assert timeout == 151  # 50.5 * 3 = 151.5 -> int(151.5) = 151, which > MIN (120)
 
     def test_boundary_at_min(self):
         """Boundary at minimum threshold."""
@@ -447,7 +447,7 @@ class TestTranscribeAudioChunked:
         partial = folder / "partial_transcript.txt"
         partial.write_text("First chunk text\n---CHUNK_BOUNDARY---\nSecond chunk text")
 
-        with patch('callwhisper.services.transcriber.ensure_chunks_exist') as mock_chunks:
+        with patch('callwhisper.services.audio_chunker.ensure_chunks_exist') as mock_chunks:
             mock_manifest = MagicMock()
             mock_manifest.chunk_count = 3
             mock_manifest.overlap_seconds = 0.5
@@ -461,7 +461,7 @@ class TestTranscribeAudioChunked:
             with patch('callwhisper.services.transcriber.transcribe_chunk') as mock_transcribe:
                 mock_transcribe.return_value = "Third chunk text"
 
-                with patch('callwhisper.services.transcriber.merge_chunk_transcripts') as mock_merge:
+                with patch('callwhisper.services.audio_chunker.merge_chunk_transcripts') as mock_merge:
                     mock_merge.return_value = "Merged transcript"
 
                     with patch('callwhisper.services.transcriber.update_checkpoint'):
@@ -543,7 +543,7 @@ class TestTranscriberCallbacks:
         async def partial_callback(text, is_final):
             callback_invocations.append((text, is_final))
 
-        with patch('callwhisper.services.transcriber.ensure_chunks_exist') as mock_chunks:
+        with patch('callwhisper.services.audio_chunker.ensure_chunks_exist') as mock_chunks:
             mock_manifest = MagicMock()
             mock_manifest.chunk_count = 2
             mock_manifest.overlap_seconds = 0.5
@@ -556,7 +556,7 @@ class TestTranscriberCallbacks:
             with patch('callwhisper.services.transcriber.transcribe_chunk') as mock_transcribe:
                 mock_transcribe.side_effect = ["Chunk 1", "Chunk 2"]
 
-                with patch('callwhisper.services.transcriber.merge_chunk_transcripts') as mock_merge:
+                with patch('callwhisper.services.audio_chunker.merge_chunk_transcripts') as mock_merge:
                     mock_merge.return_value = "Final merged"
 
                     with patch('callwhisper.services.transcriber.update_checkpoint'):
@@ -582,7 +582,7 @@ class TestTranscriberCallbacks:
         async def progress_callback(percent, stage):
             progress_updates.append((percent, stage))
 
-        with patch('callwhisper.services.transcriber.ensure_chunks_exist') as mock_chunks:
+        with patch('callwhisper.services.audio_chunker.ensure_chunks_exist') as mock_chunks:
             mock_manifest = MagicMock()
             mock_manifest.chunk_count = 3
             mock_manifest.overlap_seconds = 0.5
@@ -596,7 +596,7 @@ class TestTranscriberCallbacks:
             with patch('callwhisper.services.transcriber.transcribe_chunk') as mock_transcribe:
                 mock_transcribe.return_value = "Chunk text"
 
-                with patch('callwhisper.services.transcriber.merge_chunk_transcripts') as mock_merge:
+                with patch('callwhisper.services.audio_chunker.merge_chunk_transcripts') as mock_merge:
                     mock_merge.return_value = "Final"
 
                     with patch('callwhisper.services.transcriber.update_checkpoint'):

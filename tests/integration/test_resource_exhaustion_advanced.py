@@ -80,6 +80,16 @@ def sample_audio_file(temp_dir):
     return audio_path
 
 
+@pytest.fixture
+def mock_models_dir(temp_dir):
+    """Create mock models directory with fake model for transcription tests."""
+    models_dir = temp_dir / "models"
+    models_dir.mkdir()
+    (models_dir / "ggml-base.bin").write_bytes(b"fake model data")
+    with patch("callwhisper.services.transcriber.get_models_dir", return_value=models_dir):
+        yield models_dir
+
+
 # ============================================================================
 # Disk Full Tests
 # ============================================================================
@@ -158,7 +168,7 @@ class TestDiskFullDuringTranscription:
 
     @UNIX_ONLY
     @pytest.mark.asyncio
-    async def test_disk_full_during_transcription(self, temp_dir, mock_settings):
+    async def test_disk_full_during_transcription(self, temp_dir, mock_settings, mock_models_dir):
         """Transcription fails when disk is full."""
         from callwhisper.services.transcriber import transcribe_audio
         from callwhisper.core.exceptions import TranscriptionError
@@ -302,7 +312,7 @@ class TestMemoryExhaustion:
 
     @UNIX_ONLY
     @pytest.mark.asyncio
-    async def test_subprocess_out_of_memory(self, temp_dir, mock_settings):
+    async def test_subprocess_out_of_memory(self, temp_dir, mock_settings, mock_models_dir):
         """Handle subprocess running out of memory."""
         from callwhisper.services.transcriber import transcribe_audio
         from callwhisper.core.exceptions import TranscriptionError

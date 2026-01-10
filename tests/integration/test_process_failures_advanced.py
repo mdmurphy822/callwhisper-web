@@ -113,6 +113,16 @@ def reset_recorder_state():
         recorder._current_output_folder = None
 
 
+@pytest.fixture
+def mock_models_dir(temp_dir):
+    """Create mock models directory with fake model for transcription tests."""
+    models_dir = temp_dir / "models"
+    models_dir.mkdir()
+    (models_dir / "ggml-base.bin").write_bytes(b"fake model data")
+    with patch("callwhisper.services.transcriber.get_models_dir", return_value=models_dir):
+        yield models_dir
+
+
 # ============================================================================
 # FFmpeg Recording Failure Tests
 # ============================================================================
@@ -333,7 +343,7 @@ class TestWhisperStartupFailures:
 
     @UNIX_ONLY
     @pytest.mark.asyncio
-    async def test_whisper_not_found(self, temp_dir, mock_settings):
+    async def test_whisper_not_found(self, temp_dir, mock_settings, mock_models_dir):
         """Whisper executable not found."""
         audio_path = temp_dir / "audio_raw.wav"
         _create_test_audio(audio_path)
@@ -388,7 +398,7 @@ class TestWhisperRuntimeFailures:
 
     @UNIX_ONLY
     @pytest.mark.asyncio
-    async def test_whisper_timeout(self, temp_dir, mock_settings):
+    async def test_whisper_timeout(self, temp_dir, mock_settings, mock_models_dir):
         """Whisper transcription times out."""
         audio_path = temp_dir / "audio_raw.wav"
         _create_test_audio(audio_path)
@@ -420,7 +430,7 @@ class TestWhisperRuntimeFailures:
 
     @UNIX_ONLY
     @pytest.mark.asyncio
-    async def test_whisper_crashes(self, temp_dir, mock_settings):
+    async def test_whisper_crashes(self, temp_dir, mock_settings, mock_models_dir):
         """Whisper process crashes during transcription."""
         audio_path = temp_dir / "audio_raw.wav"
         _create_test_audio(audio_path)
@@ -451,7 +461,7 @@ class TestWhisperRuntimeFailures:
 
     @UNIX_ONLY
     @pytest.mark.asyncio
-    async def test_whisper_out_of_memory(self, temp_dir, mock_settings):
+    async def test_whisper_out_of_memory(self, temp_dir, mock_settings, mock_models_dir):
         """Whisper runs out of memory."""
         audio_path = temp_dir / "audio_raw.wav"
         _create_test_audio(audio_path)
@@ -486,7 +496,7 @@ class TestChunkTranscriptionFailures:
 
     @UNIX_ONLY
     @pytest.mark.asyncio
-    async def test_chunk_transcription_timeout(self, temp_dir, mock_settings):
+    async def test_chunk_transcription_timeout(self, temp_dir, mock_settings, mock_models_dir):
         """Single chunk transcription times out."""
         chunk_path = temp_dir / "chunk_0000.wav"
         chunk_path.write_bytes(b'\x00' * 1024)
@@ -512,7 +522,7 @@ class TestChunkTranscriptionFailures:
 
     @UNIX_ONLY
     @pytest.mark.asyncio
-    async def test_chunk_no_output_file(self, temp_dir, mock_settings):
+    async def test_chunk_no_output_file(self, temp_dir, mock_settings, mock_models_dir):
         """Chunk transcription produces no output file."""
         chunk_path = temp_dir / "chunk_0000.wav"
         chunk_path.write_bytes(b'\x00' * 1024)
@@ -687,7 +697,7 @@ class TestProcessOrchestrationFailures:
 
     @UNIX_ONLY
     @pytest.mark.asyncio
-    async def test_duration_detection_failure(self, temp_dir, mock_settings):
+    async def test_duration_detection_failure(self, temp_dir, mock_settings, mock_models_dir):
         """Duration detection failure falls back to default timeout."""
         audio_path = temp_dir / "audio_raw.wav"
         _create_test_audio(audio_path)

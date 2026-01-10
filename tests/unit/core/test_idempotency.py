@@ -147,12 +147,16 @@ class TestKeyGeneration:
 
     @UNIX_ONLY
     def test_generate_audio_key_same_content(self):
-        """Same content produces same key (deterministic)."""
+        """Same content at different times produces different keys (mtime included)."""
+        import time
         content = b"identical content"
 
         with tempfile.NamedTemporaryFile(delete=False) as f1:
             f1.write(content)
             path1 = Path(f1.name)
+
+        # Ensure different mtime by sleeping briefly
+        time.sleep(0.02)
 
         with tempfile.NamedTemporaryFile(delete=False) as f2:
             f2.write(content)

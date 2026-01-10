@@ -117,9 +117,11 @@ class TestGetDeviceStatus:
         assert status["match_type"] == "allowlist"
 
     @WINDOWS_ONLY
-    def test_status_match_type_safe_pattern(self, default_config):
+    def test_status_match_type_safe_pattern(self):
         """Status shows safe pattern match type."""
-        status = get_device_status("Stereo Mix", default_config)
+        # Use empty allowlist to test safe_pattern matching specifically
+        config = DeviceGuardConfig(allowlist=[])
+        status = get_device_status("Stereo Mix", config)
         assert status["match_type"] == "safe_pattern"
 
     def test_status_match_type_disabled(self, disabled_config):

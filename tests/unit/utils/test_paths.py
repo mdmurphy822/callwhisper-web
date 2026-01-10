@@ -307,16 +307,18 @@ class TestGetFfmpegPath:
                 mock_vendor.return_value = Path("/nonexistent/vendor")
                 result = get_ffmpeg_path()
 
-        assert str(result) == "/usr/bin/ffmpeg"
+        assert result.as_posix() == "/usr/bin/ffmpeg"
 
     def test_prefers_vendor_ffmpeg(self, tmp_path):
         """get_ffmpeg_path prefers vendor directory."""
+        import os
         get_data_dir.cache_clear()
         is_frozen.cache_clear()
 
         vendor_dir = tmp_path / "vendor"
         vendor_dir.mkdir()
-        ffmpeg = vendor_dir / "ffmpeg"
+        exe_name = "ffmpeg.exe" if os.name == "nt" else "ffmpeg"
+        ffmpeg = vendor_dir / exe_name
         ffmpeg.write_text("")
 
         with patch("callwhisper.utils.paths.get_vendor_dir", return_value=vendor_dir):
@@ -338,16 +340,18 @@ class TestGetWhisperPath:
                 mock_vendor.return_value = Path("/nonexistent/vendor")
                 result = get_whisper_path()
 
-        assert str(result) == "/usr/bin/whisper-cli"
+        assert result.as_posix() == "/usr/bin/whisper-cli"
 
     def test_prefers_vendor_whisper(self, tmp_path):
         """get_whisper_path prefers vendor directory."""
+        import os
         get_data_dir.cache_clear()
         is_frozen.cache_clear()
 
         vendor_dir = tmp_path / "vendor"
         vendor_dir.mkdir()
-        whisper = vendor_dir / "whisper-cli"
+        exe_name = "whisper-cli.exe" if os.name == "nt" else "whisper-cli"
+        whisper = vendor_dir / exe_name
         whisper.write_text("")
 
         with patch("callwhisper.utils.paths.get_vendor_dir", return_value=vendor_dir):
